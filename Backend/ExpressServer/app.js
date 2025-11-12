@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 
 // I'm importing all my route handlers for different features
-// const userRouter = require('./routes/userRoutes');
+const userRouter = require('./routes/user.routes');
 // const taskRouter = require('./routes/taskRoutes');
 
 // I'm setting up middleware to parse JSON requests automatically
@@ -13,8 +13,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // I'm mounting all my routers under a common API prefix for version control
-// This creates endpoints like /airtribe/capstone/chronos/app/api/v1/users, /tasks
-// app.use('/airtribe/capstone/chronos/app/api/v1', [userRouter, taskRouter, projectRouter]);
+// This creates endpoints like /airtribe/capstone/chronos/app/api/v1/users, /tasks and etc.
+app.use('/airtribe/capstone/chronos/app/api/v1', [userRouter]);
 
 // I'm exporting my configured app so server.js can use it
 module.exports = app;
