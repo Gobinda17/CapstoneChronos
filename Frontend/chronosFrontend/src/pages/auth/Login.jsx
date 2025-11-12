@@ -11,6 +11,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -49,7 +55,7 @@ const Login = () => {
                 type="email"
                 required
                 value={formData.email}
-                // onChange={handleInputChange}
+                onChange={handleInputChange}
                 placeholder="Enter your email"
                 className="w-full"
               />
@@ -68,7 +74,7 @@ const Login = () => {
                 type="password"
                 required
                 value={formData.password}
-                // onChange={handleInputChange}
+                onChange={handleInputChange}
                 placeholder="Enter your password"
                 className="w-full"
               />
