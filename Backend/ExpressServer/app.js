@@ -13,8 +13,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // I'm mounting all my routers under a common API prefix for version control
-// This creates endpoints like /airtribe/taskmaster/app/api/v1/users, /tasks, /projects
-// app.use('/airtribe/taskmaster/app/api/v1', [userRouter, taskRouter, projectRouter]);
+// This creates endpoints like /airtribe/capstone/chronos/app/api/v1/users, /tasks
+// app.use('/airtribe/capstone/chronos/app/api/v1', [userRouter, taskRouter, projectRouter]);
 
 // I'm exporting my configured app so server.js can use it
 module.exports = app;
