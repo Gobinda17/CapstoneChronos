@@ -1,14 +1,7 @@
-import { useState } from 'react'
-import Login from './pages/auth/Login'
+import AppRoutes  from "./router/config.jsx";
 
 function App() {
-  return (
-    <>
-      <div>
-        <Login />
-      </div>
-    </>
-  )
+  return <AppRoutes />;
 }
 
-export default App
+export default App;

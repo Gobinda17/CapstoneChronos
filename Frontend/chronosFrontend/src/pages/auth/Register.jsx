@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { use, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../../components/base/Input";
 import { Button } from "../../components/base/Button";
 import { Card } from "../../components/base/Card";
 
-const Login = () => {
+const Register = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -30,7 +30,7 @@ const Login = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
             CronManager
           </h1>
-          <p className="text-gray-600">Sign in to manage your cron jobs</p>
+          <p className="text-gray-600">Register to manage your cron jobs</p>
         </div>
 
         <Card className="p-6 lg:p-8">
@@ -43,6 +43,25 @@ const Login = () => {
                 </div>
               </div>
             )}
+
+            <div>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Name
+              </label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Enter your name"
+                className="w-full"
+              />
+            </div>
 
             <div>
               <label
@@ -82,20 +101,23 @@ const Login = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
-              </label>
-              <button
-                type="button"
-                className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Forgot password?
-              </button>
+                Confirm Password
+              </label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="Enter your confirm password"
+                className="w-full"
+              />
             </div>
 
             <Button
@@ -106,43 +128,23 @@ const Login = () => {
               {isLoading ? (
                 <>
                   <i className="ri-loader-4-line animate-spin mr-2"></i>
-                  Signing in...
+                  Registering...
                 </>
               ) : (
                 <>
                   <i className="ri-login-box-line mr-2"></i>
-                  Sign In
+                  Register
                 </>
               )}
             </Button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-blue-900 mb-2">
-                Demo Credentials
-              </h3>
-              <div className="text-xs text-blue-700 space-y-1">
-                <p>
-                  <strong>Email:</strong> admin@example.com
-                </p>
-                <p>
-                  <strong>Password:</strong> password
-                </p>
-              </div>
-            </div>
-          </div>
         </Card>
 
         <div className="text-center mt-6">
           <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
-            >
-              Register an Account
+            Already have an account?{" "}
+            <button onClick={() => navigate('/login')} className="text-blue-600 hover:text-blue-500 font-medium transition-colors">
+              Login to your Account
             </button>
           </p>
         </div>
@@ -151,4 +153,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;
