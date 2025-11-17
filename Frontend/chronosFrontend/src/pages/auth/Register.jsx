@@ -1,13 +1,16 @@
-import { use, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../../components/base/Input";
 import { Button } from "../../components/base/Button";
 import { Card } from "../../components/base/Card";
+import axios from "axios";
 
 const Register = () => {
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,6 +22,34 @@ const Register = () => {
       [e.target.name]: e.target.value,
     });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log("✅ handleSubmit called");
+    console.log("formData:", formData);
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match.");
+        setIsLoading(false);
+        return;
+      }
+      const response = await axios.post(
+        "http://localhost:3001/airtribe/capstone/chronos/app/api/v1/auth/register",
+        formData
+      );
+      console.log("✅ API response:", response.data);
+      setIsLoading(false);
+      navigate("/login", { replace: true });
+    } catch (err) {
+      setError(`Error: ${err.response?.data?.message || err.message}`);
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -124,6 +155,7 @@ const Register = () => {
               type="submit"
               disabled={isLoading}
               className="w-full whitespace-nowrap"
+              onClick={handleSubmit}
             >
               {isLoading ? (
                 <>
