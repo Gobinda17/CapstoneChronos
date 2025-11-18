@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Input } from "../../components/base/Input";
 import { Button } from "../../components/base/Button";
 import { Card } from "../../components/base/Card";
@@ -19,6 +20,23 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.post("http://localhost:3001/airtribe/capstone/chronos/app/api/v1/auth/login", formData);
+      console.log("✅ API response:", response.data);
+      setIsLoading(false);
+      return;
+    } catch (err) {
+      setError(`Error: ${err.response?.data?.message || err.message}`);
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -102,6 +120,7 @@ const Login = () => {
               type="submit"
               disabled={isLoading}
               className="w-full whitespace-nowrap"
+              onClick={handleSubmit}
             >
               {isLoading ? (
                 <>

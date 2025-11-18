@@ -25,8 +25,6 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("✅ handleSubmit called");
-    console.log("formData:", formData);
 
     setIsLoading(true);
     setError("");
@@ -49,7 +47,6 @@ const Register = () => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -175,7 +172,10 @@ const Register = () => {
         <div className="text-center mt-6">
           <p className="text-sm text-gray-600">
             Already have an account?{" "}
-            <button onClick={() => navigate('/login')} className="text-blue-600 hover:text-blue-500 font-medium transition-colors">
+            <button
+              onClick={() => navigate("/login")}
+              className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
+            >
               Login to your Account
             </button>
           </p>
