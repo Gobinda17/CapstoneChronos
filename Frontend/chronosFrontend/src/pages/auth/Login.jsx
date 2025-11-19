@@ -31,6 +31,8 @@ const Login = () => {
       const response = await axios.post("http://localhost:3001/airtribe/capstone/chronos/app/api/v1/auth/login", formData);
       console.log("✅ API response:", response.data);
       setIsLoading(false);
+      localStorage.setItem("userData", JSON.stringify(response.data));
+      navigate("/dashboard");
       return;
     } catch (err) {
       setError(`Error: ${err.response?.data?.message || err.message}`);
