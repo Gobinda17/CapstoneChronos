@@ -173,7 +173,7 @@ const Register = () => {
           <p className="text-sm text-gray-600">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/")}
               className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
             >
               Login to your Account
