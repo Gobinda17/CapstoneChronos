@@ -38,9 +38,17 @@ class AuthController {
                 });
             }
             const token = jwt.sign({ id: req.user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
-            return res.status(200).json({
+            return res.cookie("accessToken", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
+                maxAge: 24 * 60 * 60 * 1000}).status(200).json({
                 status: 'success',
-                token: token
+                message: 'Login successful',
+                user: {
+                    name: req.user.name,
+                    email: req.user.email
+                }
             });
         } catch (error) {
             return res.status(500).json({
