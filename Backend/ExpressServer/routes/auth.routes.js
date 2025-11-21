@@ -14,7 +14,9 @@ router.post('/register', [registrationValidation, authMiddleware.validateRegistr
 router.post('/login',[loginValidation, authMiddleware.validateLogin.bind(authMiddleware)], authController.userLogin.bind(authController));
 
 // Refresh Token Route
-router.post('/refresh', authMiddleware.validateRefreshToken.bind(authMiddleware), authController.refreshToken.bind(authController));
+router.post('/refresh', authMiddleware.validateAccessToken.bind(authMiddleware), authController.freshAccessToken.bind(authController));
 
+// Route for Logout
+router.post('/logout', authMiddleware.validateAccessToken.bind(authMiddleware), authController.userLogout.bind(authController));
 
 module.exports = router;

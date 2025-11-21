@@ -69,7 +69,7 @@ class AuthMiddleware {
         }
     };
 
-    validateRefreshToken = (req, res, next) => {
+    validateAccessToken = (req, res, next) => {
         const token = req.cookies.accessToken;
 
         if(!token) {

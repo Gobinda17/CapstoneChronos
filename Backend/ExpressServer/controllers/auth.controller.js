@@ -58,7 +58,7 @@ class AuthController {
         }
     };
 
-    refreshToken = async (req, res) => {
+    freshAccessToken = async (req, res) => {
         try {
             const user = await userModel.findOne({ email: req.user.id });
             if (!user) {
@@ -86,7 +86,25 @@ class AuthController {
                 message: `Message: ${error}`
             });
         }
-    }
+    };
+
+    userLogout = async (req, res) => {
+        try {
+            return res.clearCookie("accessToken", {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax'
+            }).status(200).json({
+                status: 'success',
+                message: 'Logout successful'
+            });
+        } catch (error) {
+            return res.status(500).json({
+                status: 'error',
+                message: `Message: ${error}`
+            });
+        }
+    };
 }
 
 module.exports = new AuthController();
