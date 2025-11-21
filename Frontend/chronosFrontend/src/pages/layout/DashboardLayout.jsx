@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Header } from "../../components/feature/Header";
 import { Sidebar } from "../../components/feature/Sidebar";
+import { UseAuth } from "../../context/AuthContext";
 
 const DashboardLayout = () => {
+  const { logout } = UseAuth();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -12,7 +14,7 @@ const DashboardLayout = () => {
   useEffect(() => {
     const userData = localStorage.getItem("userData");
     if (!userData) {
-      navigate("/login");
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -31,9 +33,9 @@ const DashboardLayout = () => {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("userData");
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login" , { replace: true });
   };
 
   const handleMobileMenuToggle = () => {

@@ -71,8 +71,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout", {}, { withCredentials: true });
+      await api.post("/auth/logout", { withCredentials: true });
       saveUser(null);
+      return { success: true };
     } catch (error) {
       console.error("Logout failed:", error);
     }

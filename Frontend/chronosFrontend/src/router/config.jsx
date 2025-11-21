@@ -7,8 +7,8 @@ import {
 import { AuthProvider, UseAuth } from "../context/AuthContext.jsx";
 import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
-// import HomePage from "../pages/home/HomePage.jsx";
 import DashboardLayout from "../pages/layout/DashboardLayout.jsx";
+import Dashboard from "../pages/dashboard/Dashboard.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = UseAuth();
@@ -29,10 +29,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const routes = createBrowserRouter([
-  // {
-  //   path: "/",
-  //   element: <HomePage />,
-  // },
   {
     path: "/",
     element: <Login />,
@@ -51,7 +47,7 @@ const routes = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <div>Dashboard Home</div>,
+        element: <Dashboard />,
       },
     ],
   },
