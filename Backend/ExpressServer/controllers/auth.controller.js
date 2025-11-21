@@ -57,6 +57,36 @@ class AuthController {
             });
         }
     };
+
+    refreshToken = async (req, res) => {
+        try {
+            const user = await userModel.findOne({ email: req.user.id });
+            if (!user) {
+                return res.status(404).json({
+                    status: 'fail',
+                    message: 'User not found'
+                });
+            }
+            const token = jwt.sign({ id: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+            return res.cookie("accessToken", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
+                maxAge: 24 * 60 * 60 * 1000}).status(200).json({
+                status: 'success',
+                message: 'Token refreshed successfully',
+                user: {
+                    name: user.name,
+                    email: user.email
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                status: 'error',
+                message: `Message: ${error}`
+            });
+        }
+    }
 }
 
 module.exports = new AuthController();

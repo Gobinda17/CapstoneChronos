@@ -13,5 +13,8 @@ router.post('/register', [registrationValidation, authMiddleware.validateRegistr
 // Login Route
 router.post('/login',[loginValidation, authMiddleware.validateLogin.bind(authMiddleware)], authController.userLogin.bind(authController));
 
+// Refresh Token Route
+router.post('/refresh', authMiddleware.validateRefreshToken.bind(authMiddleware), authController.refreshToken.bind(authController));
+
 
 module.exports = router;
