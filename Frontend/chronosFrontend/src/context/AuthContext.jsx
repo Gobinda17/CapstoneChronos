@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const res = await api.get("/auth/refresh", { withCredentials: true });
+      const res = await api.post("/auth/refresh", { withCredentials: true });
       if (res.data?.user) {
         saveUser(res.data.user);
       } else {
@@ -52,11 +52,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async ({ email, password }) => {
+  const login = async (formData) => {
     try {
-      const res = await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", formData);
       if (res.data?.user) {
         saveUser(res.data.user);
+        console.log("Login successful:", res.data.user);
         return { success: true };
       }
       await refreshUser();
@@ -90,10 +91,10 @@ export const AuthProvider = ({ children }) => {
 };
 
 
-export const useAuth = () => {
+export const UseAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("UseAuth must be used within an AuthProvider");
   }
   return ctx;
 }

@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { Input } from "../../components/base/Input";
 import { Button } from "../../components/base/Button";
 import { Card } from "../../components/base/Card";
+import { UseAuth } from "../../context/AuthContext.jsx";
 
 const Login = () => {
+  const { login } = UseAuth();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
     setFormData({
@@ -23,22 +25,18 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await axios.post("http://localhost:3001/airtribe/capstone/chronos/app/api/v1/auth/login", formData);
-      console.log("✅ API response:", response.data);
+      await login(formData);
+      navigate("/dashboard", { replace: true });
       setIsLoading(false);
-      localStorage.setItem("userData", JSON.stringify(response.data));
-      navigate("/dashboard");
-      return;
     } catch (err) {
       setError(`Error: ${err.response?.data?.message || err.message}`);
       setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -160,7 +158,7 @@ const Login = () => {
             Don't have an account?{" "}
             <button
               type="button"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate("/register")}
               className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
             >
               Register an Account

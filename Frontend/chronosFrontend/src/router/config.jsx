@@ -1,18 +1,17 @@
 import {
   createBrowserRouter,
   RouterProvider,
-  useNavigate,
+  Navigate,
 } from "react-router-dom";
 
-import { AuthProvider, useAuth } from "../context/AuthContext.jsx";
+import { AuthProvider, UseAuth } from "../context/AuthContext.jsx";
 import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
 // import HomePage from "../pages/home/HomePage.jsx";
 import DashboardLayout from "../pages/layout/DashboardLayout.jsx";
 
 const ProtectedRoute = ({ children }) => {
-  const navigate = useNavigate();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = UseAuth();
 
   if (isLoading) {
     return (
@@ -23,7 +22,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return navigate("/", { replace: true });
+    return <Navigate to="/" replace />;
   }
 
   return children;
