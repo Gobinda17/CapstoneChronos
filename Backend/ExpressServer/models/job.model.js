@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const jobSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'Users', required: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Users', required: true },
 
     name: { type: String, required: true },
     type: { type: String, enum: ["one-time", "recurring"], required: true },
@@ -19,6 +19,8 @@ const jobSchema = new mongoose.Schema({
         enum: ["active", "paused", "completed", "failed", "canceled"],
         default: "active"
     },
+
+    description: { type: String },
 
     retryCount: { type: Number, default: 0 },
     maxRetries: { type: Number, default: 3 },

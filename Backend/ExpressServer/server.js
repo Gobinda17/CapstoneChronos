@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const app = require('./app');
+const jobWorker = require('./workers/job.worker');
 
 const PORT = process.env.PORT || 3001;
 
