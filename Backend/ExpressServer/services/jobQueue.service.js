@@ -6,9 +6,10 @@ const jobQueue = new Queue("jobs", {
 });
 
 const enqueueJob = async (jobDoc) => {
+    console.log('Enqueuing Job:', jobDoc._id.toString());
     const data = {
         jobId: jobDoc._id.toString(),
-        userId: jobDoc.userId.toString(),
+        userId: jobDoc.createdBy.toString(),
         jobType: jobDoc.jobType,
         payload: jobDoc.payload
     };

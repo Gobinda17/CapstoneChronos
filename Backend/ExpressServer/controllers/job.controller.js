@@ -9,6 +9,7 @@ class JobController {
             const user = await userModel.findOne({ email: req.user.id });
 
             const job = await jobModel.create({ ...req.body, createdBy: user._id });
+            console.log('New Job Created:', job);
 
             await enqueueJob(job);
 

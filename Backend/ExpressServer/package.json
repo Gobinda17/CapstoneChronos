@@ -3,6 +3,8 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@bull-board/api": "^6.15.0",
+    "@bull-board/express": "^6.15.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.64.1",
     "cookie-parser": "^1.4.7",
