@@ -41,7 +41,7 @@ const Register = () => {
       );
       console.log("✅ API response:", response.data);
       setIsLoading(false);
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setError(`Error: ${err.response?.data?.message || err.message}`);
       setIsLoading(false);
