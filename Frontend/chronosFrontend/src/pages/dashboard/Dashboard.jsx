@@ -12,19 +12,40 @@ const Dashboard = () => {
   });
 
   const [recentLogs, setRecentLogs] = useState([]);
+  const [showNewJobModal, setShowNewJobModal] = useState(false);
+  const [newJob, setNewJob] = useState({
+    name: '',
+    command: '',
+    schedule: '',
+    description: ''
+  });
 
-  const getStatusColor = (status) => {
-    if (!status) return "gray";
-    switch (status.toLowerCase()) {
-      case "running":
-        return "blue";
-      case "success":
-        return "green";
-      case "failed":
-        return "red";
-      default:
-        return "gray";
-    }
+  // const getStatusColor = (status) => {
+  //   if (!status) return "gray";
+  //   switch (status.toLowerCase()) {
+  //     case "running":
+  //       return "blue";
+  //     case "success":
+  //       return "green";
+  //     case "failed":
+  //       return "red";
+  //     default:
+  //       return "gray";
+  //   }
+  // };
+
+
+  const handleNewJobSubmit = (e) => {
+    e.preventDefault();
+    setShowNewJobModal(false);
+    setNewJob({ name: '', command: '', schedule: '', description: '' });
+  };
+
+  const handleInputChange = (e) => {
+    setNewJob({
+      ...newJob,
+      [e.target.name]: e.target.value
+    });
   };
 
   return (
@@ -40,11 +61,18 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" size="sm" className="whitespace-nowrap">
-            <i className="ri-refresh-line mr-2"></i>
-            Refresh
+          <Button
+            variant="outline"
+            onClick={() => navigate('/dashboard/schedule')}
+            className="whitespace-nowrap"
+          >
+            <i className="ri-calendar-line mr-2"></i>
+            View Schedule
           </Button>
-          <Button size="sm" className="whitespace-nowrap">
+          <Button
+            onClick={() => setShowNewJobModal(true)}
+            className="whitespace-nowrap"
+          >
             <i className="ri-add-line mr-2"></i>
             New Job
           </Button>
@@ -110,140 +138,218 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Active Jobs */}
-        <div className="xl:col-span-2">
-          <Card className="p-4 lg:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-              <h2 className="text-lg lg:text-xl font-semibold text-gray-900">
-                Active Jobs
-              </h2>
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
-                View All
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              {/* {mockCronJobs.slice(0, 4).map((job) => (
-                <div
-                  key={job.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50 rounded-lg gap-3"
-                >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Recent Logs</h2>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/dashboard/logs')}
+              className="text-sm whitespace-nowrap"
+            >
+              View All
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {/* {recentLogs.map(log => (
+              <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <h3 className="font-medium text-gray-900 truncate">
-                        {job.name}
-                      </h3>
-                      <Badge variant={getStatusColor(job.status)} size="sm">
-                        {job.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1 break-all">
-                      {job.command}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Next run: {job.nextRun}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                    >
-                      <i className="ri-play-line mr-1"></i>
-                      Run
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                    >
-                      <i className="ri-edit-line mr-1"></i>
-                      Edit
-                    </Button>
+                    <p className="text-sm font-medium text-gray-900 truncate">{log.job}</p>
+                    <p className="text-xs text-gray-500">{log.time} • {log.duration}</p>
                   </div>
                 </div>
-              ))} */}
-            </div>
-          </Card>
-        </div>
+                <Badge variant={log.status === 'success' ? 'success' : 'error'}>
+                  {log.status}
+                </Badge>
+              </div>
+            ))} */}
+          </div>
+        </Card>
 
-        {/* Recent Logs */}
-        <div>
-          <Card className="p-4 lg:p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg lg:text-xl font-semibold text-gray-900">
-                Recent Logs
-              </h2>
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
-                View All
-              </Button>
-            </div>
+        <Card className="p-4 lg:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowNewJobModal(true)}
+              className="w-full flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left cursor-pointer"
+            >
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i className="ri-add-line text-xl text-white"></i>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Create New Job</p>
+                <p className="text-xs text-gray-600">Add a new cron job to your schedule</p>
+              </div>
+            </button>
 
-            <div className="space-y-3">
-              {recentLogs.map((log) => (
-                <div key={log.id} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900 text-sm truncate flex-1 mr-2">
-                      {log.jobName}
-                    </span>
-                    <Badge variant={getStatusColor(log.status)} size="sm">
-                      {log.status}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-xs text-gray-600">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Duration: {log.duration}ms
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+            <button
+              onClick={() => navigate('/dashboard/jobs')}
+              className="w-full flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left cursor-pointer"
+            >
+              <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i className="ri-file-list-3-line text-xl text-white"></i>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Manage Jobs</p>
+                <p className="text-xs text-gray-600">View and edit existing cron jobs</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/dashboard/logs')}
+              className="w-full flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left cursor-pointer"
+            >
+              <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i className="ri-file-text-line text-xl text-white"></i>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">View Logs</p>
+                <p className="text-xs text-gray-600">Check execution history and errors</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/dashboard/settings')}
+              className="w-full flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-left cursor-pointer"
+            >
+              <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i className="ri-settings-3-line text-xl text-white"></i>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Settings</p>
+                <p className="text-xs text-gray-600">Configure system preferences</p>
+              </div>
+            </button>
+          </div>
+        </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="p-4 lg:p-6">
-        <h2 className="text-lg lg:text-xl font-semibold text-gray-900 mb-4">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Button
-            variant="outline"
-            className="flex flex-col items-center p-4 h-auto"
-          >
-            <i className="ri-add-circle-line text-2xl mb-2"></i>
-            <span className="text-sm">Create Job</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex flex-col items-center p-4 h-auto"
-          >
-            <i className="ri-file-download-line text-2xl mb-2"></i>
-            <span className="text-sm">Export Logs</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex flex-col items-center p-4 h-auto"
-          >
-            <i className="ri-settings-3-line text-2xl mb-2"></i>
-            <span className="text-sm">Settings</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="flex flex-col items-center p-4 h-auto"
-          >
-            <i className="ri-bar-chart-line text-2xl mb-2"></i>
-            <span className="text-sm">Analytics</span>
-          </Button>
+      {/* New Job Modal */}
+      {showNewJobModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Create New Cron Job</h2>
+                <button
+                  onClick={() => setShowNewJobModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <i className="ri-close-line text-xl text-gray-500"></i>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleNewJobSubmit} className="p-6 space-y-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Job Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  value={newJob.name}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Database Backup"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="command" className="block text-sm font-medium text-gray-700 mb-2">
+                  Command <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="command"
+                  name="command"
+                  type="text"
+                  required
+                  value={newJob.command}
+                  onChange={handleInputChange}
+                  placeholder="e.g., /usr/bin/backup.sh"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="schedule" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cron Schedule <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="schedule"
+                  name="schedule"
+                  type="text"
+                  required
+                  value={newJob.schedule}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 0 2 * * *"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Format: minute hour day month weekday (e.g., "0 2 * * *" runs daily at 2:00 AM)
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows="3"
+                  value={newJob.description}
+                  onChange={handleInputChange}
+                  placeholder="Brief description of what this job does..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                  maxLength="500"
+                ></textarea>
+                <p className="text-xs text-gray-500 mt-1">{newJob.description.length}/500 characters</p>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <i className="ri-information-line text-blue-600 text-lg flex-shrink-0 mt-0.5"></i>
+                  <div className="text-sm text-blue-900">
+                    <p className="font-medium mb-1">Cron Schedule Examples:</p>
+                    <ul className="space-y-1 text-xs">
+                      <li><code className="bg-white px-2 py-0.5 rounded">0 * * * *</code> - Every hour</li>
+                      <li><code className="bg-white px-2 py-0.5 rounded">*/15 * * * *</code> - Every 15 minutes</li>
+                      <li><code className="bg-white px-2 py-0.5 rounded">0 0 * * *</code> - Daily at midnight</li>
+                      <li><code className="bg-white px-2 py-0.5 rounded">0 0 * * 0</code> - Weekly on Sunday</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowNewJobModal(false)}
+                  className="flex-1 whitespace-nowrap"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 whitespace-nowrap"
+                >
+                  <i className="ri-add-line mr-2"></i>
+                  Create Job
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
-      </Card>
+      )}
     </div>
   );
 };

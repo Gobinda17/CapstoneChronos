@@ -29,9 +29,14 @@ const Login = () => {
     setError("");
 
     try {
-      await login(formData);
-      navigate("/dashboard", { replace: true });
-      setIsLoading(false);
+      const success = await login(formData);
+      if (success && success.success) {
+        setIsLoading(false);
+        navigate("/dashboard", { replace: true });
+      } else {
+        setIsLoading(false);
+        setError(success.message || "Login failed. Please try again.");
+      }
     } catch (err) {
       setError(`Error: ${err.response?.data?.message || err.message}`);
       setIsLoading(false);

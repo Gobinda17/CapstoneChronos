@@ -57,7 +57,6 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post("/auth/login", formData);
       if (res.data?.user) {
         saveUser(res.data.user);
-        console.log("Login successful:", res.data.user);
         return { success: true };
       }
       await refreshUser();
