@@ -11,7 +11,7 @@ import DashboardLayout from "../pages/layout/DashboardLayout.jsx";
 import Dashboard from "../pages/dashboard/Dashboard.jsx";
 import Jobs from "../pages/jobs/Job.jsx";
 import Schedule from "../pages/schedule/Schedule.jsx";
-import Logs from "../pages/logs/Log.jsx";
+import Logs from "../pages/log/Log.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = UseAuth();
