@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/base/Card";
 import { Button } from "../../components/base/Button";
 import { Badge } from "../../components/base/Badge";
+import api from "../../api";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total: 0,
     running: 0,
@@ -13,6 +16,8 @@ const Dashboard = () => {
 
   const [recentLogs, setRecentLogs] = useState([]);
   const [showNewJobModal, setShowNewJobModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [newJob, setNewJob] = useState({
     name: '',
     command: '',
@@ -20,25 +25,64 @@ const Dashboard = () => {
     description: ''
   });
 
-  // const getStatusColor = (status) => {
-  //   if (!status) return "gray";
-  //   switch (status.toLowerCase()) {
-  //     case "running":
-  //       return "blue";
-  //     case "success":
-  //       return "green";
-  //     case "failed":
-  //       return "red";
-  //     default:
-  //       return "gray";
-  //   }
-  // };
+  // Fetch dashboard stats
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch stats
+        const statsResponse = await api.get('/jobs/stats');
+        setStats(statsResponse.data);
+        
+        // Fetch recent logs
+        const logsResponse = await api.get('/logs/recent?limit=5');
+        setRecentLogs(logsResponse.data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.response?.data?.message || 'Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const getStatusColor = (status) => {
+    if (!status) return "default";
+    switch (status.toLowerCase()) {
+      case "running":
+        return "info";
+      case "success":
+      case "completed":
+        return "success";
+      case "failed":
+      case "error":
+        return "danger";
+      case "pending":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
 
 
-  const handleNewJobSubmit = (e) => {
+  const handleNewJobSubmit = async (e) => {
     e.preventDefault();
-    setShowNewJobModal(false);
-    setNewJob({ name: '', command: '', schedule: '', description: '' });
+    try {
+      await api.post('/jobs', newJob);
+      setShowNewJobModal(false);
+      setNewJob({ name: '', command: '', schedule: '', description: '' });
+      
+      // Refresh dashboard data
+      const statsResponse = await api.get('/jobs/stats');
+      setStats(statsResponse.data);
+    } catch (err) {
+      console.error('Error creating job:', err);
+      alert(err.response?.data?.message || 'Failed to create job');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -118,7 +162,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <i className="ri-check-circle-line text-green-600 text-lg lg:text-xl"></i>
+              <i className="ri-check-double-line text-green-600 text-lg lg:text-xl"></i>
             </div>
           </div>
         </Card>
@@ -151,21 +195,42 @@ const Dashboard = () => {
             </Button>
           </div>
           <div className="space-y-3">
-            {/* {recentLogs.map(log => (
-              <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{log.job}</p>
-                    <p className="text-xs text-gray-500">{log.time} • {log.duration}</p>
-                  </div>
-                </div>
-                <Badge variant={log.status === 'success' ? 'success' : 'error'}>
-                  {log.status}
-                </Badge>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <i className="ri-loader-4-line animate-spin text-2xl text-gray-400"></i>
               </div>
-            ))} */}
+            ) : error ? (
+              <div className="text-center py-8 text-red-600 text-sm">
+                {error}
+              </div>
+            ) : recentLogs.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                No recent logs available
+              </div>
+            ) : (
+              recentLogs.map(log => (
+                <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      log.status?.toLowerCase() === 'success' || log.status?.toLowerCase() === 'completed' ? 'bg-green-500' :
+                      log.status?.toLowerCase() === 'running' ? 'bg-blue-500' :
+                      log.status?.toLowerCase() === 'failed' || log.status?.toLowerCase() === 'error' ? 'bg-red-500' :
+                      log.status?.toLowerCase() === 'pending' ? 'bg-yellow-500' : 'bg-gray-500'
+                    }`}></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{log.jobName || log.job}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(log.timestamp || log.time).toLocaleString()} 
+                        {log.duration && ` • ${log.duration}`}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={getStatusColor(log.status)}>
+                    {log.status}
+                  </Badge>
+                </div>
+              ))
+            )}
           </div>
         </Card>
 

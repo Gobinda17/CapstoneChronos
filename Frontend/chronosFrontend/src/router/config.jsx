@@ -9,6 +9,9 @@ import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
 import DashboardLayout from "../pages/layout/DashboardLayout.jsx";
 import Dashboard from "../pages/dashboard/Dashboard.jsx";
+import Jobs from "../pages/jobs/Job.jsx";
+import Schedule from "../pages/schedule/Schedule.jsx";
+import Logs from "../pages/logs/Log.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = UseAuth();
@@ -49,6 +52,18 @@ const routes = createBrowserRouter([
         index: true,
         element: <Dashboard />,
       },
+      {
+        path: "jobs",
+        element: <Jobs />,
+      },
+      {
+        path: "schedule",
+        element: <Schedule />,
+      },
+      {
+        path: "logs",
+        element: <Logs />,
+      }
     ],
   },
 ]);
