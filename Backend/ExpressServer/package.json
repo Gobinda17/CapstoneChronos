@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "clear:queue": "node scripts/clearQueue.js"
   },
   "dependencies": {
     "@bull-board/api": "^6.15.0",

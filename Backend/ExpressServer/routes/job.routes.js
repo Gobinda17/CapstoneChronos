@@ -8,6 +8,6 @@ const jobController = require('../controllers/job.controller');
 router.post('/', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.createJob.bind(jobController));
 
 // Get all Jobs Route
-router.get('/', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.getAllJobs.bind(jobController));
+router.get('/stats', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.getJobsCount.bind(jobController));
 
 module.exports = router;
