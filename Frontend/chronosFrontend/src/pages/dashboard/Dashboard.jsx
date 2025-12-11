@@ -33,7 +33,8 @@ const Dashboard = () => {
         setError(null);
         
         // Fetch stats
-        const statsResponse = await api.get('/jobs/stats');
+        const statsResponse = await api.get('/jobs');
+        console.log('Stats Response:', statsResponse.data.jobs);
         setStats(statsResponse.data);
         
         // Fetch recent logs
