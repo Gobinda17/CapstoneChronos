@@ -20,8 +20,12 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [newJob, setNewJob] = useState({
     name: "",
+    maxRetries: 0,
     command: "",
+    scheduleType: "recurring",
     schedule: "",
+    runAt: "",
+    timezone: "UTC",
     description: "",
   });
 
@@ -34,7 +38,6 @@ const Dashboard = () => {
 
         // Fetch stats
         const statsResponse = await api.get("/jobs/stats");
-        console.log("Stats Response:", statsResponse.data);
         setStats({
           total: statsResponse.data.stats.total,
           running: statsResponse.data.stats.running,
@@ -44,7 +47,10 @@ const Dashboard = () => {
 
         // Fetch recent logs
         const logsResponse = await api.get("/logs/recent?limit=5");
-        setRecentLogs(logsResponse.data);
+        console.log(logsResponse.data.logs);
+        // Handle nested logs structure
+        const logsData = logsResponse.data.logs || [];
+        setRecentLogs(logsData);
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError(
@@ -81,11 +87,25 @@ const Dashboard = () => {
     try {
       await api.post("/jobs", newJob);
       setShowNewJobModal(false);
-      setNewJob({ name: "", command: "", schedule: "", description: "" });
+      setNewJob({
+        name: "",
+        maxRetries: 0,
+        command: "",
+        scheduleType: "recurring",
+        schedule: "",
+        runAt: "",
+        timezone: "UTC",
+        description: "",
+      });
 
       // Refresh dashboard data
       const statsResponse = await api.get("/jobs/stats");
-      setStats(statsResponse.data);
+      setStats({
+        total: statsResponse.data.stats.total,
+        running: statsResponse.data.stats.running,
+        completed: statsResponse.data.stats.completed,
+        failed: statsResponse.data.stats.failed,
+      });
     } catch (err) {
       console.error("Error creating job:", err);
       alert(err.response?.data?.message || "Failed to create job");
@@ -100,7 +120,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -131,7 +151,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mt-5">
         <Card className="p-4 lg:p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -189,7 +209,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-5">
         <Card className="p-4 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Recent Logs</h2>
@@ -217,7 +237,7 @@ const Dashboard = () => {
             ) : (
               recentLogs.map((log) => (
                 <div
-                  key={log.id}
+                  key={log._id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -238,11 +258,11 @@ const Dashboard = () => {
                     ></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {log.jobName || log.job}
+                        {log.jobname || log.job}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(log.timestamp || log.time).toLocaleString()}
-                        {log.duration && ` • ${log.duration}`}
+                        {new Date(log.runAt).toLocaleString()}
+                        {log.durationMs && ` • ${log.durationMs} ms`}
                       </p>
                     </div>
                   </div>
@@ -372,40 +392,150 @@ const Dashboard = () => {
                 >
                   Command <span className="text-red-500">*</span>
                 </label>
-                <input
+                <select
                   id="command"
                   name="command"
-                  type="text"
                   required
                   value={newJob.command}
                   onChange={handleInputChange}
-                  placeholder="e.g., /usr/bin/backup.sh"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Select a command...</option>
+                  <option value="DB_BACKUP">Database Backup</option>
+                  <option value="CLEANUP_LOGS">Cleanup Logs</option>
+                  <option value="SEND_REPORTS">Send Reports</option>
+                  <option value="SYSTEM_UPDATE">System Update</option>
+                  <option value="DATA_SYNC">Data Sync</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Max Retries <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="maxRetries"
+                  name="maxRetries"
+                  type="number"
+                  required
+                  value={newJob.maxRetries}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
               </div>
 
               <div>
                 <label
-                  htmlFor="schedule"
+                  htmlFor="scheduleType"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Cron Schedule <span className="text-red-500">*</span>
+                  Schedule Type <span className="text-red-500">*</span>
                 </label>
-                <input
-                  id="schedule"
-                  name="schedule"
-                  type="text"
-                  required
-                  value={newJob.schedule}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 0 2 * * *"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Format: minute hour day month weekday (e.g., "0 2 * * *" runs
-                  daily at 2:00 AM)
-                </p>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="recurring"
+                      checked={newJob.scheduleType === "recurring"}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Recurring (Cron)
+                    </span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="one-time"
+                      checked={newJob.scheduleType === "one-time"}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      One-time (Run once)
+                    </span>
+                  </label>
+                </div>
               </div>
+
+              {newJob.scheduleType === "recurring" ? (
+                <div>
+                  <label
+                    htmlFor="schedule"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Cron Schedule <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="schedule"
+                    name="schedule"
+                    type="text"
+                    required
+                    value={newJob.schedule}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 0 2 * * *"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Format: minute hour day month weekday (e.g., "0 2 * * *"
+                    runs daily at 2:00 AM)
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="runAt"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Run At <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="runAt"
+                    name="runAt"
+                    type="datetime-local"
+                    required
+                    value={newJob.runAt}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                  <div className="mt-3">
+                    <label
+                      htmlFor="timezone"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Timezone
+                    </label>
+                    <select
+                      id="timezone"
+                      name="timezone"
+                      value={newJob.timezone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    >
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">America/New_York</option>
+                      <option value="America/Los_Angeles">
+                        America/Los_Angeles
+                      </option>
+                      <option value="America/Chicago">America/Chicago</option>
+                      <option value="Europe/London">Europe/London</option>
+                      <option value="Europe/Paris">Europe/Paris</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo</option>
+                      <option value="Asia/Shanghai">Asia/Shanghai</option>
+                      <option value="Asia/Kolkata">Asia/Kolkata</option>
+                      <option value="Asia/Dubai">Asia/Dubai</option>
+                      <option value="Australia/Sydney">Australia/Sydney</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label
@@ -429,40 +559,44 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <i className="ri-information-line text-blue-600 text-lg flex-shrink-0 mt-0.5"></i>
-                  <div className="text-sm text-blue-900">
-                    <p className="font-medium mb-1">Cron Schedule Examples:</p>
-                    <ul className="space-y-1 text-xs">
-                      <li>
-                        <code className="bg-white px-2 py-0.5 rounded">
-                          0 * * * *
-                        </code>{" "}
-                        - Every hour
-                      </li>
-                      <li>
-                        <code className="bg-white px-2 py-0.5 rounded">
-                          */15 * * * *
-                        </code>{" "}
-                        - Every 15 minutes
-                      </li>
-                      <li>
-                        <code className="bg-white px-2 py-0.5 rounded">
-                          0 0 * * *
-                        </code>{" "}
-                        - Daily at midnight
-                      </li>
-                      <li>
-                        <code className="bg-white px-2 py-0.5 rounded">
-                          0 0 * * 0
-                        </code>{" "}
-                        - Weekly on Sunday
-                      </li>
-                    </ul>
+              {newJob.scheduleType === "recurring" && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <i className="ri-information-line text-blue-600 text-lg flex-shrink-0 mt-0.5"></i>
+                    <div className="text-sm text-blue-900">
+                      <p className="font-medium mb-1">
+                        Cron Schedule Examples:
+                      </p>
+                      <ul className="space-y-1 text-xs">
+                        <li>
+                          <code className="bg-white px-2 py-0.5 rounded">
+                            0 * * * *
+                          </code>{" "}
+                          - Every hour
+                        </li>
+                        <li>
+                          <code className="bg-white px-2 py-0.5 rounded">
+                            */15 * * * *
+                          </code>{" "}
+                          - Every 15 minutes
+                        </li>
+                        <li>
+                          <code className="bg-white px-2 py-0.5 rounded">
+                            0 0 * * *
+                          </code>{" "}
+                          - Daily at midnight
+                        </li>
+                        <li>
+                          <code className="bg-white px-2 py-0.5 rounded">
+                            0 0 * * 0
+                          </code>{" "}
+                          - Weekly on Sunday
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <Button
