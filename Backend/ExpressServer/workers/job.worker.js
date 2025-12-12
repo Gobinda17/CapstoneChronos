@@ -5,41 +5,42 @@ const jobModel = require("../models/job.model");
 const logModel = require("../models/log.model");
 
 // Job handler functions
-const backupDb = async (payload) => {
-  console.log("Executing DB_BACKUP with payload:", payload);
+const backupDb = async (command) => {
+  console.log("Executing DB_BACKUP with payload:", command);
   // TODO: Implement database backup logic
   return { success: true, message: "Database backup completed" };
 };
 
-const cleanupLogs = async (payload) => {
-  console.log("Executing CLEANUP_LOGS with payload:", payload);
+const cleanupLogs = async (command) => {
+  console.log("Executing CLEANUP_LOGS with payload:", command);
   // TODO: Implement log cleanup logic
   return { success: true, message: "Logs cleanup completed" };
 };
 
-const sendEmail = async (payload) => {
-  console.log("Executing SEND_EMAIL with payload:", payload);
+const sendEmail = async (command) => {
+  console.log("Executing SEND_EMAIL with payload:", command);
   // TODO: Implement email sending logic
   return { success: true, message: "Email sent successfully" };
 };
 
-const httpRequest = async (payload) => {
-  console.log("Executing HTTP_REQUEST with payload:", payload);
+const httpRequest = async (command) => {
+  console.log("Executing HTTP_REQUEST with payload:", command);
   // TODO: Implement HTTP request logic
   return { success: true, message: "HTTP request completed" };
 };
 
 const handlers = {
-  DB_BACKUP: async (payload) => backupDb(payload),
-  CLEANUP_LOGS: async (payload) => cleanupLogs(payload),
-  SEND_EMAIL: async (payload) => sendEmail(payload),
-  HTTP_REQUEST: async (payload) => httpRequest(payload),
+  DB_BACKUP: async (command) => backupDb(command),
+  CLEANUP_LOGS: async (command) => cleanupLogs(command),
+  SEND_EMAIL: async (command) => sendEmail(command),
+  HTTP_REQUEST: async (command) => httpRequest(command),
 };
 
 const jobWorker = new Worker(
   "jobs",
   async (bullJob) => {
-    const { jobId, userId, name, jobType, payload } = bullJob.data;
+    console.log(bullJob.data);
+    const { jobId, userId, name, jobType, payload, command } = bullJob.data;
 
     const jobDoc = await jobModel.findById(jobId);
     console.log(name);
@@ -54,6 +55,7 @@ const jobWorker = new Worker(
       await logModel.create({
         jobId,
         jobname: name,
+        command: command,
         status: "paused",
         runAt: new Date(),
         durationMs: Date.now() - start,
@@ -86,11 +88,12 @@ const jobWorker = new Worker(
         throw new Error(`Invalid command: ${jobDoc.command}`);
       }
 
-      const result = await handler(jobDoc.payload);
+      const result = await handler(jobDoc.command);
 
       await logModel.create({
         jobId,
         jobname: name,
+        command: command,
         status: "completed",
         runAt: new Date(),
         durationMs: Date.now() - start,
@@ -102,6 +105,7 @@ const jobWorker = new Worker(
       await logModel.create({
         jobId,
         jobname: name,
+        command: command,
         status: "failed",
         runAt: new Date(),
         durationMs: Date.now() - start,
@@ -142,6 +146,7 @@ jobWorker.on("failed", async (job, err) => {
     await logModel.create({
       jobId: job?.data?.jobId ?? null,
       jobname: job?.data?.name ?? null,
+      command: job?.data?.command ?? null,
       status: "failed",
       runAt: new Date(),
       durationMs: 0, // or compute if you track start elsewhere

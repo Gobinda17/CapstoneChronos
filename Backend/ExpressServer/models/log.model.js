@@ -6,6 +6,7 @@ const logSchema = new mongoose.Schema(
         jobname: { type: String },
         status: { type: String, enum: ["completed", "failed"], required: true },
         runAt: { type: Date, required: true },
+        command: { type: String },
         durationMs: Number,
         output: String,
         error: String,

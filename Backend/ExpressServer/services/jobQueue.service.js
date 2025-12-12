@@ -12,7 +12,8 @@ const enqueueJob = async (jobDoc) => {
         userId: jobDoc.createdBy.toString(),
         name: jobDoc.name,
         jobType: jobDoc.type,
-        payload: jobDoc.command
+        command: jobDoc.command,
+        payload: jobDoc.payload || {}
     };
     console.log('Enqueue data:', data);
 

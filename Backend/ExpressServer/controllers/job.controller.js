@@ -7,9 +7,21 @@ class JobController {
   createJob = async (req, res) => {
     try {
       const user = await userModel.findOne({ email: req.user.id });
-      const { name, scheduleType, runAt, cronExpr, command, description, maxRetries } = req.body;
+      const { name, scheduleType, runAt, cronExpr, command, description, maxRetries, payload } = req.body;
 
-      const job = await jobModel.create({ name: name, type: scheduleType, scheduledAt: runAt, cronExpr, command, description, maxRetries, createdBy: user._id });
+      const job = await jobModel.create({ 
+        name, 
+        type: scheduleType, 
+        scheduledAt: runAt, 
+        cronExpr, 
+        command, 
+        description, 
+        maxRetries, 
+        payload: payload || {},
+        createdBy: user._id 
+      });
+
+      console.log("Created Job:", job);
 
       await enqueueJob(job);
 

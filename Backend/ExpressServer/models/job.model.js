@@ -18,6 +18,8 @@ const jobSchema = new mongoose.Schema({
         enum: ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST"]
     },
 
+    payload: { type: Object, default: {} },
+
     status: {
         type: String,
         enum: ["active", "paused", "completed", "failed", "canceled"],
