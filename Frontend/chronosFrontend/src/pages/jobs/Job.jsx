@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Card } from "../../components/base/Card";
 import { Button } from "../../components/base/Button";
 import { Badge } from "../../components/base/Badge";
 import { Input } from "../../components/base/Input";
+import api from "../../api";
 
 const Job = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -16,9 +19,28 @@ const Job = () => {
     scheduleType: "recurring",
     cronExpr: "",
     runAt: "",
-    timezone: "UTC",
     description: "",
   });
+
+  useEffect(() => {
+    const fetchJobsData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await api.get("/jobs");
+        console.log("Jobs data fetched:", response.data);
+
+        setJobs(response.data.jobs || []);
+      } catch (err) {
+        console.error("Error fetching jobs:", err);
+        setError("Failed to load jobs. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobsData();
+  }, []);
 
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch =
@@ -29,24 +51,29 @@ const Job = () => {
   });
 
   const getStatusColor = (status) => {
-    switch (status) {
+    if (!status) return "default";
+    switch (status.toLowerCase()) {
       case "running":
-        return "blue";
+        return "info";
       case "success":
-        return "green";
+      case "completed":
+        return "success";
+      case "failed":
       case "error":
-        return "red";
-      case "scheduled":
-        return "yellow";
+        return "danger";
+      case "pending":
+        return "warning";
       default:
-        return "gray";
+        return "default";
     }
   };
 
   const toggleJobStatus = (jobId) => {
     setJobs(
       jobs.map((job) =>
-        job.id === jobId ? { ...job, enabled: !job.enabled } : job
+        job._id === jobId
+          ? { ...job, status: job.status === "active" ? "paused" : "active" }
+          : job
       )
     );
   };
@@ -62,7 +89,6 @@ const Job = () => {
       scheduleType: "recurring",
       cronExpr: "",
       runAt: "",
-      timezone: "UTC",
       description: "",
     });
     // In a real app, you would add the new job to the jobs list
@@ -97,7 +123,7 @@ const Job = () => {
       </div>
 
       {/* Filters and Search */}
-      <Card className="p-4 lg:p-6">
+      <Card className="p-4 lg:p-6 mt-5">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <Input
@@ -114,10 +140,10 @@ const Job = () => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-8"
             >
               <option value="all">All Status</option>
-              <option value="running">Running</option>
-              <option value="success">Success</option>
-              <option value="error">Error</option>
-              <option value="scheduled">Scheduled</option>
+              <option value="completed">Completed</option>
+              <option value="active">Active</option>
+              <option value="failed">Failed</option>
+              {/* <option value="scheduled">Scheduled</option> */}
             </select>
             {/* <Button variant="outline" className="whitespace-nowrap">
               <i className="ri-filter-line mr-2"></i>
@@ -128,205 +154,15 @@ const Job = () => {
       </Card>
 
       {/* Jobs List */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden mt-5">
         {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Schedule
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Next Run
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Success Rate
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredJobs.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            job.enabled ? "bg-green-400" : "bg-gray-300"
-                          }`}
-                        ></div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {job.name}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate max-w-xs">
-                          {job.command}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {job.schedule}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={getStatusColor(job.status)}>
-                      {job.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {job.nextRun}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {(
-                      (job.successCount / (job.successCount + job.errorCount)) *
-                      100
-                    ).toFixed(1)}
-                    %
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => toggleJobStatus(job.id)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          job.enabled ? "bg-blue-600" : "bg-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            job.enabled ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="whitespace-nowrap"
-                      >
-                        <i className="ri-play-line mr-1"></i>
-                        Run
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="whitespace-nowrap"
-                      >
-                        <i className="ri-edit-line mr-1"></i>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 whitespace-nowrap"
-                      >
-                        <i className="ri-delete-bin-line mr-1"></i>
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="lg:hidden">
-          <div className="divide-y divide-gray-200">
-            {filteredJobs.map((job) => (
-              <div key={job.id} className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                        job.enabled ? "bg-green-400" : "bg-gray-300"
-                      }`}
-                    ></div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {job.name}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Schedule: {job.schedule}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={getStatusColor(job.status)} size="sm">
-                    {job.status}
-                  </Badge>
-                </div>
-
-                <div className="text-xs text-gray-600 mb-3 break-all">
-                  {job.command}
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
-                    <span>Next: {job.nextRun}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>
-                      Success:{" "}
-                      {(
-                        (job.successCount /
-                          (job.successCount + job.errorCount)) *
-                        100
-                      ).toFixed(1)}
-                      %
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => toggleJobStatus(job.id)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        job.enabled ? "bg-blue-600" : "bg-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                          job.enabled ? "translate-x-5" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                    >
-                      <i className="ri-play-line"></i>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                    >
-                      <i className="ri-edit-line"></i>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 whitespace-nowrap"
-                    >
-                      <i className="ri-delete-bin-line"></i>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <i className="ri-loader-4-line animate-spin text-2xl text-gray-400"></i>
           </div>
-        </div>
-
-        {filteredJobs.length === 0 && (
+        ) : error ? (
+          <div className="text-center py-8 text-red-600 text-sm">{error}</div>
+        ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12">
             <i className="ri-time-line text-4xl text-gray-400 mb-4"></i>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -341,6 +177,259 @@ const Job = () => {
               <i className="ri-add-line mr-2"></i>
               Create New Job
             </Button>
+          </div>
+        ) : (
+          <div>
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Job Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cron Expression
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Schedule Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Last Run At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredJobs.map((job) => (
+                    <tr key={job._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                job.status === "active"
+                                  ? "bg-green-400"
+                                  : "bg-gray-300"
+                              }`}
+                            ></div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {job.name}
+                            </div>
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {job.command}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {job.createdAt}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={getStatusColor(job.status)}>
+                          {job.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {job.type === "recurring"
+                          ? job.cronExpr
+                          : "Not Applicable"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {job.type}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {job.lastRunAt}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {job.type === "one-time" ? (
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                            >
+                              <i className="ri-replay-5-line mr-1"></i>
+                              Re-Run
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                            >
+                              <i className="ri-edit-line mr-1"></i>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 whitespace-nowrap"
+                            >
+                              <i className="ri-delete-bin-line mr-1"></i>
+                              Delete
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {/* <button
+                              onClick={() => toggleJobStatus(job._id)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                job.status === 'active' ? "bg-blue-600" : "bg-gray-200"
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  job.status === 'active'
+                                    ? "translate-x-6"
+                                    : "translate-x-1"
+                                }`}
+                              />
+                            </button> */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                              onClick={() => toggleJobStatus(job._id)}
+                            >
+                              {job.status === "active" ? (
+                                <>
+                                  <i className="ri-pause-line mr-1"></i>
+                                  Pause
+                                </>
+                              ) : (
+                                <>
+                                  <i className="ri-play-line mr-1"></i>
+                                  Play
+                                </>
+                              )}
+                            </Button>
+                            {/* <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                            >
+                              <i className="ri-play-line mr-1"></i>
+                              Run
+                            </Button> */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                            >
+                              <i className="ri-edit-line mr-1"></i>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 whitespace-nowrap"
+                            >
+                              <i className="ri-delete-bin-line mr-1"></i>
+                              Delete
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile List View */}
+            <div className="lg:hidden">
+              <div className="divide-y divide-gray-200">
+                {filteredJobs.map((job) => (
+                  <div key={job._id} className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                            job.enabled ? "bg-green-400" : "bg-gray-300"
+                          }`}
+                        ></div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-medium text-gray-900 truncate">
+                            {job.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Schedule: {job.schedule}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={getStatusColor(job.status)} size="sm">
+                        {job.status}
+                      </Badge>
+                    </div>
+
+                    <div className="text-xs text-gray-600 mb-3 break-all">
+                      {job.command}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
+                        <span>Next: {job.nextRun}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>
+                          Success:{" "}
+                          {(
+                            (job.successCount /
+                              (job.successCount + job.errorCount)) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => toggleJobStatus(job._id)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            job.enabled ? "bg-blue-600" : "bg-gray-200"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                              job.enabled ? "translate-x-5" : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="whitespace-nowrap"
+                        >
+                          <i className="ri-play-line"></i>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="whitespace-nowrap"
+                        >
+                          <i className="ri-edit-line"></i>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 whitespace-nowrap"
+                        >
+                          <i className="ri-delete-bin-line"></i>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </Card>
@@ -417,11 +506,14 @@ const Job = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 >
+                  <option value="">Select a command...</option>
                   <option value="DB_BACKUP">Database Backup</option>
                   <option value="CLEANUP_LOGS">Cleanup Logs</option>
                   <option value="SEND_REPORTS">Send Reports</option>
+                  <option value="SEND_EMAIL">Send Email</option>
                   <option value="SYSTEM_UPDATE">System Update</option>
                   <option value="DATA_SYNC">Data Sync</option>
+                  <option value="HTTP_REQUEST">HTTP Request</option>
                 </select>
               </div>
 
@@ -502,35 +594,6 @@ const Job = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
-                  <div className="mt-3">
-                    <label
-                      htmlFor="timezone"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Timezone
-                    </label>
-                    <select
-                      id="timezone"
-                      name="timezone"
-                      value={newJob.timezone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                    >
-                      <option value="UTC">UTC</option>
-                      <option value="America/New_York">America/New_York</option>
-                      <option value="America/Los_Angeles">
-                        America/Los_Angeles
-                      </option>
-                      <option value="America/Chicago">America/Chicago</option>
-                      <option value="Europe/London">Europe/London</option>
-                      <option value="Europe/Paris">Europe/Paris</option>
-                      <option value="Asia/Tokyo">Asia/Tokyo</option>
-                      <option value="Asia/Shanghai">Asia/Shanghai</option>
-                      <option value="Asia/Kolkata">Asia/Kolkata</option>
-                      <option value="Asia/Dubai">Asia/Dubai</option>
-                      <option value="Australia/Sydney">Australia/Sydney</option>
-                    </select>
-                  </div>
                 </div>
               )}
 
@@ -575,7 +638,7 @@ const Job = () => {
                           <code className="bg-white px-2 py-0.5 rounded">
                             */15 * * * *
                           </code>{" "}
-                          - Every 15 minutes
+                          - Every 15 seconds
                         </li>
                         <li>
                           <code className="bg-white px-2 py-0.5 rounded">
