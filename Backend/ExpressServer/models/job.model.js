@@ -15,7 +15,7 @@ const jobSchema = new mongoose.Schema({
     command: {
         type: String,
         required: true,
-        enum: ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST"]
+        enum: ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST", "DATA_SYNC", "SEND_REPORTS", "SYSTEM_UPDATE"]
     },
 
     payload: { type: Object, default: {} },
@@ -33,6 +33,9 @@ const jobSchema = new mongoose.Schema({
 
     lastRunAt: { type: Date },
     nextRunAt: { type: Date },
+
+    bullJobId: { type: String },     // for one-time delayed jobs
+    repeatJobKey: { type: String },  // for recurring jobs
 
 }, {
     timestamps: true

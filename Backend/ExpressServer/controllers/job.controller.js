@@ -9,16 +9,16 @@ class JobController {
       const user = await userModel.findOne({ email: req.user.id });
       const { name, scheduleType, runAt, cronExpr, command, description, maxRetries, payload } = req.body;
 
-      const job = await jobModel.create({ 
-        name, 
-        type: scheduleType, 
-        scheduledAt: runAt, 
-        cronExpr, 
-        command, 
-        description, 
-        maxRetries, 
+      const job = await jobModel.create({
+        name,
+        type: scheduleType,
+        scheduledAt: runAt,
+        cronExpr,
+        command,
+        description,
+        maxRetries,
         payload: payload || {},
-        createdBy: user._id 
+        createdBy: user._id
       });
 
       console.log("Created Job:", job);
@@ -68,6 +68,26 @@ class JobController {
       });
     }
   };
+
+  getAllJobs = async (req, res) => {
+    try {
+      const user = await userModel.findOne({ email: req.user.id });
+      const jobs = await jobModel.find({ createdBy: user._id });
+      return res.status(200).json({
+        status: "success",
+        jobs: jobs,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
+  pauseAJob = async (req, res) => {
+    
+  }
 }
 
 module.exports = new JobController();

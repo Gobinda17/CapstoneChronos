@@ -9,7 +9,12 @@ const jobController = require('../controllers/job.controller');
 // Create Job Route
 router.post('/', [authMiddleware.validateAccessToken.bind(authMiddleware), validateCreateJob, validationMiddleware.validateJobCreation.bind(validationMiddleware)], jobController.createJob.bind(jobController));
 
-// Get all Jobs Route
+// Get all Jobs Stats
 router.get('/stats', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.getJobsCount.bind(jobController));
+
+router.get('/', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.getAllJobs.bind(jobController));
+
+router.put('/:jobId/pause', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.pauseAJob.bind(jobController));
+
 
 module.exports = router;

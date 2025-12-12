@@ -29,21 +29,38 @@ const httpRequest = async (command) => {
   return { success: true, message: "HTTP request completed" };
 };
 
+const sendReports = async (command) => {
+  console.log("Executing SEND_REPORTS with payload:", command);
+  return { success: true, message: "Reports sent successfully" };
+};
+
+const dataSync = async (command) => {
+  console.log("Executing DATA_SYNC with payload:", command);
+  return { success: true, message: "Data synchronization completed" };
+};
+
+const systemUpdate = async (command) => {
+  console.log("Executing SYSTEM_UPDATE with payload:", command);
+  return { success: true, message: "System update completed" };
+};
+
+
 const handlers = {
   DB_BACKUP: async (command) => backupDb(command),
   CLEANUP_LOGS: async (command) => cleanupLogs(command),
   SEND_EMAIL: async (command) => sendEmail(command),
   HTTP_REQUEST: async (command) => httpRequest(command),
+  SEND_REPORTS: async (command) => sendReports(command),
+  DATA_SYNC: async (command) => dataSync(command),
+  SYSTEM_UPDATE: async (command) => systemUpdate(command),
 };
 
 const jobWorker = new Worker(
   "jobs",
   async (bullJob) => {
-    console.log(bullJob.data);
     const { jobId, userId, name, jobType, payload, command } = bullJob.data;
 
     const jobDoc = await jobModel.findById(jobId);
-    console.log(name);
 
     // If the DB row is gone, just skip (especially for recurring jobs)
     if (!jobDoc) {

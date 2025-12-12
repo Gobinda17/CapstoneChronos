@@ -1,7 +1,7 @@
 const { body } = require('express-validator');
 
 const allowedTypes = ["one-time", "recurring"];
-const allowedCommands = ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST"];
+const allowedCommands = ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST", "DATA_SYNC", "SEND_REPORTS", "SYSTEM_UPDATE", ""];
 
 const validateCreateJob = [
     body('name')

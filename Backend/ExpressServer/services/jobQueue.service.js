@@ -18,26 +18,40 @@ const enqueueJob = async (jobDoc) => {
     console.log('Enqueue data:', data);
 
     if (jobDoc.type === "one-time") {
-        const delayMs = new Date(jobDoc.scheduledAt).getTime() - Date.now();
-        return await jobQueue.add("one-time-job", data, {
-            delay: delayMs > 0 ? delayMs : 0,
+        const scheduledMs = new Date(jobDoc.scheduledAt).getTime();
+        if (Number.isNaN(scheduledMs)) throw new Error("Invalid scheduledAt");
+
+        const delayMs = scheduledMs - Date.now();
+
+        const bullJob = await jobQueue.add("one-time-job", data, {
+            delay: Math.max(delayMs, 0),
             attempts: jobDoc.maxRetries || 3,
-            backoff: {
-                type: 'exponential',
-                delay: 5000
-            }
+            backoff: { type: "exponential", delay: 5000 },
         });
+
+        // ✅ Save bull job id so we can pause/cancel later
+        await Job.updateOne(
+            { _id: jobDoc._id },
+            { $set: { bullJobId: String(bullJob.id) } }
+        );
+
+        return bullJob;
     }
 
     if (jobDoc.type === "recurring") {
-        return await jobQueue.add("recurring-job", data, {
-            repeat: { cron: jobDoc.cronExpr },
+        const bullJob = await jobQueue.add("recurring-job", data, {
+            repeat: { cron: jobDoc.cronExpr /*, tz: "Asia/Kolkata" */ },
             attempts: jobDoc.maxRetries || 3,
-            backoff: {
-                type: 'exponential',
-                delay: 5000
-            }
+            backoff: { type: "exponential", delay: 5000 },
         });
+
+        // ✅ Save repeat key so we can remove schedule later
+        await Job.updateOne(
+            { _id: jobDoc._id },
+            { $set: { repeatJobKey: bullJob.repeatJobKey || null } }
+        );
+
+        return bullJob;
     }
 };
 
