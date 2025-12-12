@@ -23,7 +23,7 @@ const Dashboard = () => {
     maxRetries: 0,
     command: "",
     scheduleType: "recurring",
-    schedule: "",
+    cronExpr: "",
     runAt: "",
     timezone: "UTC",
     description: "",
@@ -92,7 +92,7 @@ const Dashboard = () => {
         maxRetries: 0,
         command: "",
         scheduleType: "recurring",
-        schedule: "",
+        cronExpr: "",
         runAt: "",
         timezone: "UTC",
         description: "",
@@ -258,7 +258,7 @@ const Dashboard = () => {
                     ></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {log.jobname || log.job}
+                        {log.jobname || log.job} || {log.command}
                       </p>
                       <p className="text-xs text-gray-500">
                         {new Date(log.runAt).toLocaleString()}
@@ -468,17 +468,17 @@ const Dashboard = () => {
               {newJob.scheduleType === "recurring" ? (
                 <div>
                   <label
-                    htmlFor="schedule"
+                    htmlFor="cronExpr"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Cron Schedule <span className="text-red-500">*</span>
                   </label>
                   <input
-                    id="schedule"
-                    name="schedule"
+                    id="cronExpr"
+                    name="cronExpr"
                     type="text"
                     required
-                    value={newJob.schedule}
+                    value={newJob.cronExpr}
                     onChange={handleInputChange}
                     placeholder="e.g., 0 2 * * *"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"

@@ -14,7 +14,7 @@ const Job = () => {
     maxRetries: 0,
     command: "",
     scheduleType: "recurring",
-    schedule: "",
+    cronExpr: "",
     runAt: "",
     timezone: "UTC",
     description: "",
@@ -60,7 +60,7 @@ const Job = () => {
       maxRetries: 0,
       command: "",
       scheduleType: "recurring",
-      schedule: "",
+      cronExpr: "",
       runAt: "",
       timezone: "UTC",
       description: "",
@@ -465,17 +465,17 @@ const Job = () => {
               {newJob.scheduleType === "recurring" ? (
                 <div>
                   <label
-                    htmlFor="schedule"
+                    htmlFor="cronExpr"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Cron Schedule <span className="text-red-500">*</span>
                   </label>
                   <input
-                    id="schedule"
-                    name="schedule"
+                    id="cronExpr"
+                    name="cronExpr"
                     type="text"
                     required
-                    value={newJob.schedule}
+                    value={newJob.cronExpr}
                     onChange={handleInputChange}
                     placeholder="e.g., 0 2 * * *"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
