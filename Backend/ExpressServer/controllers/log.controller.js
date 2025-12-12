@@ -5,7 +5,16 @@ const logModel = require("../models/log.model");
 class LogController {
     recentLogs = async (req, res) => {
         const { limit } = req.query;
-        console.log("Fetching recent logs with limit:", limit);
+        try {
+            const userID = await userModel.getUserIdByEmail(req.user.id);
+            const jobIds = await jobModel.getJobIdsByUserId({ createdBy: userID });
+            const logs = await logModel.getRecentLogsByJobIds(jobIds, parseInt(limit));
+            return res.status(200).json({ logs });
+
+        } catch (error) {
+            console.error("Error fetching recent logs:", error);
+            return res.status(500).json({ message: "Internal server error" });
+        }
     }
 }
 

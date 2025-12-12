@@ -8,4 +8,9 @@ const userSchema = new mongoose.Schema({
     timestamps: true 
 });
 
+userSchema.statics.getUserIdByEmail = async function(email) {
+    const user = await this.findOne({ email });
+    return user ? user._id : null;
+};
+
 module.exports = mongoose.model('Users', userSchema, 'Users');

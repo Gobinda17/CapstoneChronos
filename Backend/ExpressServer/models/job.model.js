@@ -12,7 +12,11 @@ const jobSchema = new mongoose.Schema({
     // for recurring jobs
     cronExpr: { type: String },
 
-    payload: { type: Object, default: {} },
+    command: {
+        type: String,
+        required: true,
+        enum: ["DB_BACKUP", "CLEANUP_LOGS", "SEND_EMAIL", "HTTP_REQUEST"]
+    },
 
     status: {
         type: String,
@@ -28,8 +32,13 @@ const jobSchema = new mongoose.Schema({
     lastRunAt: { type: Date },
     nextRunAt: { type: Date },
 
-}, { 
-    timestamps: true 
+}, {
+    timestamps: true
 });
+
+jobSchema.statics.getJobIdsByUserId = async function (filter) {
+    const jobs = await this.find(filter).select('_id');
+    return jobs.map(job => job._id);
+};
 
 module.exports = mongoose.model('Jobs', jobSchema, 'Jobs');

@@ -10,9 +10,11 @@ const enqueueJob = async (jobDoc) => {
     const data = {
         jobId: jobDoc._id.toString(),
         userId: jobDoc.createdBy.toString(),
-        jobType: jobDoc.jobType,
-        payload: jobDoc.payload
+        name: jobDoc.name,
+        jobType: jobDoc.type,
+        payload: jobDoc.command
     };
+    console.log('Enqueue data:', data);
 
     if (jobDoc.type === "one-time") {
         const delayMs = new Date(jobDoc.scheduledAt).getTime() - Date.now();
