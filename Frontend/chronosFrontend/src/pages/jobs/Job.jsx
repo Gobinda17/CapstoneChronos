@@ -78,20 +78,28 @@ const Job = () => {
     );
   };
 
-  const handleNewJobSubmit = (e) => {
+  const handleNewJobSubmit = async (e) => {
     e.preventDefault();
-    console.log("New job created:", newJob);
-    setShowNewJobModal(false);
-    setNewJob({
-      name: "",
-      maxRetries: 0,
-      command: "",
-      scheduleType: "recurring",
-      cronExpr: "",
-      runAt: "",
-      description: "",
-    });
-    // In a real app, you would add the new job to the jobs list
+    let { runAt } = newJob;
+    runAt = new Date(runAt).toISOString();
+    try {
+      const jobResponse = await api.post("/jobs", { ...newJob, runAt });
+      setShowNewJobModal(false);
+      setNewJob({
+        name: "",
+        maxRetries: 0,
+        command: "",
+        scheduleType: "recurring",
+        cronExpr: "",
+        runAt: "",
+        description: "",
+      });
+
+      setJobs([...jobs, jobResponse.data.job]);
+    } catch (err) {
+      console.error("Error creating job:", err);
+      alert(err.response?.data?.message || "Failed to create job");
+    }
   };
 
   const handleInputChange = (e) => {
