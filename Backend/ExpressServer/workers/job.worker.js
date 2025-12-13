@@ -135,7 +135,9 @@ const jobWorker = new Worker(
 );
 
 jobWorker.on("completed", async (job) => {
+
   console.log(`✅ Job ${job.id} completed`);
+
   try {
     const jobDoc = await jobModel.findById(job.data.jobId);
     if (!jobDoc) return;

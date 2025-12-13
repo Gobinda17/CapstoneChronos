@@ -30,10 +30,8 @@ const enqueueJob = async (jobDoc) => {
         });
 
         // ✅ Save bull job id so we can pause/cancel later
-        await Job.updateOne(
-            { _id: jobDoc._id },
-            { $set: { bullJobId: String(bullJob.id) } }
-        );
+        jobDoc.bullJobId = String(bullJob.id);
+        await jobDoc.save();
 
         return bullJob;
     }
@@ -46,10 +44,8 @@ const enqueueJob = async (jobDoc) => {
         });
 
         // ✅ Save repeat key so we can remove schedule later
-        await Job.updateOne(
-            { _id: jobDoc._id },
-            { $set: { repeatJobKey: bullJob.repeatJobKey || null } }
-        );
+        jobDoc.repeatJobKey = bullJob.repeatJobKey || null;
+        await jobDoc.save();
 
         return bullJob;
     }
