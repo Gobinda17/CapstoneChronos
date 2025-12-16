@@ -1,13 +1,27 @@
 const jobModel = require("../models/job.model");
 const userModel = require("../models/user.model");
 
-const { enqueueJob } = require("../services/jobQueue.service");
+const {
+  enqueueJob,
+  upsertRecurringScheduler,
+  removeRecurringScheduler,
+  reScheduleJob,
+} = require("../services/jobQueue.service");
 
 class JobController {
   createJob = async (req, res) => {
     try {
       const user = await userModel.findOne({ email: req.user.id });
-      const { name, scheduleType, runAt, cronExpr, command, description, maxRetries, payload } = req.body;
+      const {
+        name,
+        scheduleType,
+        runAt,
+        cronExpr,
+        command,
+        description,
+        maxRetries,
+        payload,
+      } = req.body;
 
       const job = await jobModel.create({
         name,
@@ -18,12 +32,14 @@ class JobController {
         description,
         maxRetries,
         payload: payload || {},
-        createdBy: user._id
+        createdBy: user._id,
       });
 
-      console.log("Created Job:", job);
-
-      await enqueueJob(job);
+      if (job.type === "one-time") {
+        await enqueueJob(job);
+      } else if (job.type === "recurring") {
+        await upsertRecurringScheduler(job);
+      }
 
       return res.status(201).json({
         status: "success",
@@ -85,9 +101,46 @@ class JobController {
     }
   };
 
-  pauseAJob = async (req, res) => {
-    
-  }
+  toggleAJob = async (req, res) => {
+    const id = req.params.id;
+    try {
+      const job = await jobModel.findById(id);
+      if (!job) {
+        return res.status(404).json({
+          status: "error",
+          message: "Job not found",
+        });
+      }
+
+      const newStatus = job.status === "paused" ? "active" : "paused";
+
+      const updatedJob = await jobModel.findByIdAndUpdate(
+        id,
+        { status: newStatus },
+        { new: true }
+      );
+
+      if (newStatus === "paused") {
+        await removeRecurringScheduler(updatedJob);
+      } else if (newStatus === "active") {
+        reScheduleJob(updatedJob);
+      }
+
+      return res.status(200).json({
+        status: "success",
+        message:
+          newStatus === "active"
+            ? "Job resumed successfully"
+            : "Job paused successfully",
+        job: updatedJob,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
 }
 
 module.exports = new JobController();

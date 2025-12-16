@@ -1,95 +1,95 @@
-const { validationResult } = require('express-validator');
+const { validationResult } = require("express-validator");
 
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const userModel = require('../models/user.model');
+const userModel = require("../models/user.model");
 
 class AuthMiddleware {
-    #checkExistingEmail = async (req, res) => {
-        try {
-            const { email } = req.body;
-            const userExist = await userModel.findOne({ email: email });
-            return userExist;
-        } catch (error) {
-            return res.status(500).json({
-                status: 'error',
-                message: `Message: ${error}`
-            });
-        }
-    };
+  #checkExistingEmail = async (req, res) => {
+    try {
+      const { email } = req.body;
+      const userExist = await userModel.findOne({ email: email });
+      return userExist;
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
 
-    #handleValidationErrors = (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                status: 'fail',
-                message: 'Validation errors',
-                errors: errors.array()[0].msg
-            });
-        }
-    };
+  #handleValidationErrors = (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Validation errors",
+        errors: errors.array()[0].msg,
+      });
+    }
+  };
 
-    validateRegistration = async (req, res, next) => {
-        try {
-            this.#handleValidationErrors(req, res);
-            const userExist = await this.#checkExistingEmail(req, res);
-            if (userExist) {
-                return res.status(409).json({
-                    status: 'fail',
-                    message: 'Email already exist'
-                });
-            }
-            next();
-        } catch (error) {
-            return res.status(500).json({
-                status: 'error',
-                message: `Message: ${error}`
-            });
-        }
-    };
+  validateRegistration = async (req, res, next) => {
+    try {
+      this.#handleValidationErrors(req, res);
+      const userExist = await this.#checkExistingEmail(req, res);
+      if (userExist) {
+        return res.status(409).json({
+          status: "fail",
+          message: "Email already exist",
+        });
+      }
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
 
-    validateLogin = async (req, res, next) => {
-        try {
-            this.#handleValidationErrors(req, res);
-            const userExist = await this.#checkExistingEmail(req, res);
-            if (!userExist) {
-                return res.status(401).json({
-                    status: 'fail',
-                    message: 'Invalid email'
-                });
-            }
-            req.user = userExist;
-            next();
-        } catch (error) {
-            return res.status(500).json({
-                status: 'error',
-                message: `Message: ${error}`
-            });
-        }
-    };
+  validateLogin = async (req, res, next) => {
+    try {
+      this.#handleValidationErrors(req, res);
+      const userExist = await this.#checkExistingEmail(req, res);
+      if (!userExist) {
+        return res.status(401).json({
+          status: "fail",
+          message: "Invalid email",
+        });
+      }
+      req.user = userExist;
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
 
-    validateAccessToken = (req, res, next) => {
-        const token = req.cookies.accessToken;
+  validateAccessToken = (req, res, next) => {
+    const token = req.cookies.accessToken;
 
-        if(!token) {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'No token provided'
-            });
-        }
+    if (!token) {
+      return res.status(401).json({
+        status: "fail",
+        message: "No token provided",
+      });
+    }
 
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            req.user = decoded;
-            next();
-        } catch (error) {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'Invalid or expired token'
-            });
-        }
-    };
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      next();
+    } catch (error) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Invalid or expired token",
+      });
+    }
+  };
 }
 
 module.exports = new AuthMiddleware();

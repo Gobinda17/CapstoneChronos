@@ -35,7 +35,7 @@ const jobSchema = new mongoose.Schema({
     nextRunAt: { type: Date },
 
     bullJobId: { type: String },     // for one-time delayed jobs
-    repeatJobKey: { type: String },  // for recurring jobs
+    schedulerId: { type: String }, // for recurring jobs
 
 }, {
     timestamps: true
