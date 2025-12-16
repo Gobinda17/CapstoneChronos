@@ -68,22 +68,32 @@ const Job = () => {
     }
   };
 
-  const toggleJobStatus = (jobId) => {
-    setJobs(
-      jobs.map((job) =>
-        job._id === jobId
-          ? { ...job, status: job.status === "active" ? "paused" : "active" }
-          : job
-      )
-    );
+  const toggleJobStatus = async (jobId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.put(`/jobs/${jobId}/toggle`);
+      const updatedJob = response.data.job;
+      console.log("Toggled job status:", updatedJob);
+      setJobs((prevJobs) =>
+        prevJobs.map((job) => (job._id === jobId ? updatedJob : job))
+      );
+    } catch (err) {
+      console.error("Error toggling job status:", err);
+      setError(err.response?.data?.message || "Failed to toggle job status");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNewJobSubmit = async (e) => {
     e.preventDefault();
     let { runAt } = newJob;
-    runAt = new Date(runAt).toISOString();
+    if (runAt !== "") {
+      newJob = { ...newJob, runAt: new Date(runAt).toISOString() };
+    }
     try {
-      const jobResponse = await api.post("/jobs", { ...newJob, runAt });
+      const jobResponse = await api.post("/jobs", newJob);
       setShowNewJobModal(false);
       setNewJob({
         name: "",
@@ -646,7 +656,7 @@ const Job = () => {
                           <code className="bg-white px-2 py-0.5 rounded">
                             */15 * * * *
                           </code>{" "}
-                          - Every 15 seconds
+                          - Every 15 minutes
                         </li>
                         <li>
                           <code className="bg-white px-2 py-0.5 rounded">

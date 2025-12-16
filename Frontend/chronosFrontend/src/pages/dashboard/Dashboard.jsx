@@ -84,9 +84,11 @@ const Dashboard = () => {
   const handleNewJobSubmit = async (e) => {
     e.preventDefault();
     let { runAt } = newJob;
-    runAt = new Date(runAt).toISOString();
+    if (runAt !== "") {
+      newJob = { ...newJob, runAt: new Date(runAt).toISOString() };
+    }
     try {
-      await api.post("/jobs", { ...newJob, runAt });
+      await api.post("/jobs", newJob);
       setShowNewJobModal(false);
       setNewJob({
         name: "",
@@ -551,7 +553,7 @@ const Dashboard = () => {
                           <code className="bg-white px-2 py-0.5 rounded">
                             */15 * * * *
                           </code>{" "}
-                          - Every 15 seconds
+                          - Every 15 minutes
                         </li>
                         <li>
                           <code className="bg-white px-2 py-0.5 rounded">
