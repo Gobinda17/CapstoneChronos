@@ -12,7 +12,7 @@ const Job = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showNewJobModal, setShowNewJobModal] = useState(false);
-  const [newJob, setNewJob] = useState({
+  let [newJob, setNewJob] = useState({
     name: "",
     maxRetries: 0,
     command: "",
@@ -21,6 +21,17 @@ const Job = () => {
     runAt: "",
     description: "",
   });
+  const [editingJobId, setEditingJobId] = useState(null);
+
+  const toDatetimeLocal = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   useEffect(() => {
     const fetchJobsData = async () => {
@@ -43,10 +54,11 @@ const Job = () => {
   }, []);
 
   const filteredJobs = jobs.filter((job) => {
-    const matchesSearch =
-      job.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.command.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "all" || job.status === filterStatus;
+    const name = (job.name || "").toString().toLowerCase();
+    const command = (job.command || "").toString().toLowerCase();
+    const search = (searchTerm || "").toString().toLowerCase();
+    const matchesSearch = name.includes(search) || command.includes(search);
+    const matchesStatus = filterStatus === "all" || (job.status || "").toString() === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -89,23 +101,25 @@ const Job = () => {
   const handleNewJobSubmit = async (e) => {
     e.preventDefault();
     let { runAt } = newJob;
+    let jobResponse;
     if (runAt !== "") {
-      newJob = { ...newJob, runAt: new Date(runAt).toISOString() };
+      setNewJob({ ...newJob, runAt: new Date(runAt).toISOString() });
     }
+    console.log(editingJobId);
     try {
-      const jobResponse = await api.post("/jobs", newJob);
+      if (editingJobId) {
+        jobResponse = await api.put(`/jobs/${editingJobId}/update`, newJob);
+        setJobs((prevJobs) =>
+          prevJobs.map((job) =>
+            job._id === editingJobId ? jobResponse.data.job : job
+          )
+        );
+      } else {
+        jobResponse = await api.post("/jobs", newJob);
+        setJobs((prevJobs) => [...prevJobs, jobResponse.data.job]);
+      }
       setShowNewJobModal(false);
-      setNewJob({
-        name: "",
-        maxRetries: 0,
-        command: "",
-        scheduleType: "recurring",
-        cronExpr: "",
-        runAt: "",
-        description: "",
-      });
-
-      setJobs([...jobs, jobResponse.data.job]);
+      reset();
     } catch (err) {
       console.error("Error creating job:", err);
       alert(err.response?.data?.message || "Failed to create job");
@@ -117,6 +131,71 @@ const Job = () => {
       ...newJob,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const editJob = (jobId) => {
+    const job = filteredJobs.find((j) => j._id === jobId);
+    if (!job) return;
+
+    setEditingJobId(jobId);
+
+    setNewJob({
+      name: job.name || "",
+      maxRetries: job.maxRetries ?? 3,
+      command: job.command || "",
+      scheduleType: job.type || "recurring", // map type -> scheduleType
+      cronExpr: job.type === "recurring" ? job.cronExpr || "" : "",
+      runAt: job.type === "one-time" ? toDatetimeLocal(job.scheduledAt) : "",
+      description: job.description || "",
+    });
+  };
+
+  const deleteAjob = async (jobId) => {
+    if (!window.confirm("Are you sure you want to delete this job?")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.delete(`/jobs/${jobId}`);
+      if (response.status === 200) {
+        setJobs((prevJobs) => prevJobs.filter((job) => job._id !== jobId));
+      }
+    } catch (err) {
+      console.error("Error deleting job:", err);
+      alert(err.response?.data?.message || "Failed to delete job");
+      setError(err.response?.data?.message || "Failed to delete job");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rerunJob = async (jobId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.post(`/jobs/${jobId}/rerun`);
+      if (response.status === 'success') {
+        const updatedJob = await api.get("/jobs");
+        setJobs((prevJobs) => [...prevJobs, updatedJob.data.jobs]);
+      }
+    } catch (err) {
+      console.error("Error re-running job:", err);
+      setError(err.response?.data?.message || "Failed to re-run job");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setNewJob({
+      name: "",
+      maxRetries: 0,
+      command: "",
+      scheduleType: "recurring",
+      cronExpr: "",
+      runAt: "",
+      description: "",
+    });
+    setEditingJobId(null);
   };
 
   return (
@@ -269,49 +348,18 @@ const Job = () => {
                         {job.lastRunAt}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {job.type === "one-time" ? (
-                          <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
+                          {job.type === "one-time" ? (
                             <Button
                               variant="outline"
                               size="sm"
                               className="whitespace-nowrap"
+                              onClick={() => rerunJob(job._id)}
                             >
                               <i className="ri-replay-5-line mr-1"></i>
                               Re-Run
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap"
-                            >
-                              <i className="ri-edit-line mr-1"></i>
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 whitespace-nowrap"
-                            >
-                              <i className="ri-delete-bin-line mr-1"></i>
-                              Delete
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            {/* <button
-                              onClick={() => toggleJobStatus(job._id)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                job.status === 'active' ? "bg-blue-600" : "bg-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  job.status === 'active'
-                                    ? "translate-x-6"
-                                    : "translate-x-1"
-                                }`}
-                              />
-                            </button> */}
+                          ) : (
                             <Button
                               variant="outline"
                               size="sm"
@@ -330,32 +378,29 @@ const Job = () => {
                                 </>
                               )}
                             </Button>
-                            {/* <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap"
-                            >
-                              <i className="ri-play-line mr-1"></i>
-                              Run
-                            </Button> */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap"
-                            >
-                              <i className="ri-edit-line mr-1"></i>
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 whitespace-nowrap"
-                            >
-                              <i className="ri-delete-bin-line mr-1"></i>
-                              Delete
-                            </Button>
-                          </div>
-                        )}
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="whitespace-nowrap"
+                            onClick={() => {
+                              setShowNewJobModal(true);
+                              editJob(job._id);
+                            }}
+                          >
+                            <i className="ri-edit-line mr-1"></i>
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 whitespace-nowrap"
+                            onClick={() => deleteAjob(job._id)}
+                          >
+                            <i className="ri-delete-bin-line mr-1"></i>
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -459,10 +504,13 @@ const Job = () => {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">
-                  Create New Cron Job
+                  {editingJobId ? "Edit Job" : "Create New Job"}
                 </h2>
                 <button
-                  onClick={() => setShowNewJobModal(false)}
+                  onClick={() => {
+                    setShowNewJobModal(false);
+                    reset();
+                  }}
                   className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   <i className="ri-close-line text-xl text-gray-500"></i>
@@ -542,34 +590,68 @@ const Job = () => {
                 >
                   Schedule Type <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scheduleType"
-                      value="recurring"
-                      checked={newJob.scheduleType === "recurring"}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">
-                      Recurring (Cron)
-                    </span>
-                  </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scheduleType"
-                      value="one-time"
-                      checked={newJob.scheduleType === "one-time"}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">
-                      One-time (Run once)
-                    </span>
-                  </label>
-                </div>
+                {editingJobId && newJob.scheduleType === "recurring" ? (
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        value="recurring"
+                        checked={newJob.scheduleType === "recurring"}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        Recurring (Cron)
+                      </span>
+                    </label>
+                  </div>
+                ) : editingJobId && newJob.scheduleType === "one-time" ? (
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        value="one-time"
+                        checked={newJob.scheduleType === "one-time"}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        One-time (Run once)
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="flex gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        value="recurring"
+                        checked={newJob.scheduleType === "recurring"}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        Recurring (Cron)
+                      </span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        value="one-time"
+                        checked={newJob.scheduleType === "one-time"}
+                        onChange={handleInputChange}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        One-time (Run once)
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {newJob.scheduleType === "recurring" ? (
@@ -680,14 +762,21 @@ const Job = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowNewJobModal(false)}
+                  onClick={() => {
+                    setShowNewJobModal(false);
+                    reset();
+                  }}
                   className="flex-1 whitespace-nowrap"
                 >
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1 whitespace-nowrap">
-                  <i className="ri-add-line mr-2"></i>
-                  Create Job
+                  <i
+                    className={
+                      editingJobId ? "ri-save-line mr-2" : "ri-add-line mr-2"
+                    }
+                  ></i>
+                  {editingJobId ? "Update Job" : "Create Job"}
                 </Button>
               </div>
             </form>

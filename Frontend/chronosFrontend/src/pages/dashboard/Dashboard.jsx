@@ -85,7 +85,7 @@ const Dashboard = () => {
     e.preventDefault();
     let { runAt } = newJob;
     if (runAt !== "") {
-      newJob = { ...newJob, runAt: new Date(runAt).toISOString() };
+      setNewJob({ ...newJob, runAt: new Date(runAt).toISOString() });
     }
     try {
       await api.post("/jobs", newJob);
