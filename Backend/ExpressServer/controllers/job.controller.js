@@ -6,6 +6,7 @@ const {
   upsertRecurringScheduler,
   removeRecurringScheduler,
   reScheduleJob,
+  enqueueRerunNow,
 } = require("../services/jobQueue.service");
 
 class JobController {
@@ -103,8 +104,9 @@ class JobController {
 
   toggleAJob = async (req, res) => {
     const id = req.params.id;
+    const user = await userModel.findOne({ email: req.user.id });
     try {
-      const job = await jobModel.findById(id);
+      const job = await jobModel.findById({ _id: id, createdBy: user._id });
       if (!job) {
         return res.status(404).json({
           status: "error",
@@ -133,6 +135,110 @@ class JobController {
             ? "Job resumed successfully"
             : "Job paused successfully",
         job: updatedJob,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
+  updateAJob = async (req, res) => {
+    const id = req.params.id;
+    try {
+      const user = await userModel.findOne({ email: req.user.id });
+      const job = await jobModel.findById({ _id: id, createdBy: user._id });
+      if (!job) {
+        return res.status(404).json({
+          status: "error",
+          message: "Job not found",
+        });
+      }
+      if (req.body.scheduleType === "recurring") {
+        await removeRecurringScheduler(job);
+        const updatedJob = await jobModel.findByIdAndUpdate(
+          id,
+          {
+            ...req.body,
+          },
+          { new: true }
+        );
+        await upsertRecurringScheduler(updatedJob);
+        return res.status(200).json({
+          status: "success",
+          message: "Job updated successfully",
+          job: updatedJob,
+        });
+      } else {
+        const updatedJob = await jobModel.findByIdAndUpdate(
+          id,
+          {
+            ...req.body,
+          },
+          { new: true }
+        );
+        await enqueueJob(updatedJob);
+        return res.status(200).json({
+          status: "success",
+          message: "Job updated successfully",
+          job: updatedJob,
+        });
+      }
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
+  deleteAJob = async (req, res) => {
+    const id = req.params.id;
+    try {
+      const user = await userModel.findOne({ email: req.user.id });
+      const job = await jobModel.findByIdAndDelete({
+        _id: id,
+        createdBy: user._id,
+      });
+      if (!job) {
+        return res.status(404).json({
+          status: "error",
+          message: "Job not found",
+        });
+      }
+      if (job.type === "recurring") {
+        await removeRecurringScheduler(job);
+      }
+      return res.status(200).json({
+        status: "success",
+        message: "Job deleted successfully",
+        job: job,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
+  rerunAJob = async (req, res) => {
+    const id = req.params.id;
+    try {
+      const user = await userModel.findOne({ email: req.user.id });
+      const job = await jobModel.findOneAndUpdate({ _id: id, createdBy: user._id }, { status: "active" });
+      if (!job) {
+        return res.status(404).json({
+          status: "error",
+          message: "Job not found",
+        });
+      }
+      await enqueueRerunNow(job);
+
+      return res.status(200).json({
+        status: "success",
+        message: "Job rerun successfully",
       });
     } catch (error) {
       return res.status(500).json({

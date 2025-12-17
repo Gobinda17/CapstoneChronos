@@ -34,6 +34,23 @@ const enqueueJob = async (jobDoc) => {
   return bullJob;
 };
 
+const enqueueRerunNow = async (jobDoc) => {
+  const data = {
+    jobId: jobDoc._id.toString(),
+    userId: jobDoc.createdBy.toString(),
+    name: jobDoc.name,
+    jobType: jobDoc.type,
+    command: jobDoc.command,
+    payload: jobDoc.payload || {},
+  };
+
+  // ✅ no delay, no scheduledAt check
+  return jobQueue.add("manual-run", data, {
+    attempts: jobDoc.maxRetries || 3,
+    backoff: { type: "exponential", delay: 5000 },
+  });
+};
+
 const upsertRecurringScheduler = async (jobDoc) => {
   const data = {
     jobId: jobDoc._id.toString(),
@@ -82,4 +99,5 @@ module.exports = {
   upsertRecurringScheduler,
   removeRecurringScheduler,
   reScheduleJob,
+  enqueueRerunNow
 };
