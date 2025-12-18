@@ -38,7 +38,14 @@ class JobController {
       });
 
       if (job.type === "one-time") {
+        const ms = new Date(job.scheduledAt).getTime();
+        if (Number.isNaN(ms)) throw new Error("Invalid scheduledAt");
+
+        job.status = ms > Date.now() ? "scheduled" : "active"; // or "scheduled" always
+        await job.save();
+
         await enqueueJob(job);
+
       } else if (job.type === "recurring") {
         await upsertRecurringScheduler(job);
       }
@@ -313,7 +320,8 @@ class JobController {
           const effectiveStart =
             createdAt.getTime() > startDate.getTime() ? createdAt : startDate;
 
-          const parseOpts = { currentDate: effectiveStart, endDate };
+          const inclusiveStart = new Date(effectiveStart.getTime() - 1000);
+          const parseOpts = { currentDate: inclusiveStart, endDate };
           if (tz) parseOpts.tz = tz;
 
           const interval = CronExpressionParser.parse(rjob.cronExpr, parseOpts);

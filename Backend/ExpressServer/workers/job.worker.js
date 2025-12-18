@@ -134,29 +134,51 @@ const jobWorker = new Worker(
   { connection: redisClient }
 );
 
-jobWorker.on("completed", async (job) => {
-
-  console.log(`✅ Job ${job.id} completed`);
-
+jobWorker.on("active", async (job) => {
   try {
     const jobDoc = await jobModel.findById(job.data.jobId);
     if (!jobDoc) return;
 
-    if (jobDoc.type === "one-time" || job.data.jobType === "one-time") {
-      jobDoc.status = "completed";
-    } else {
-      jobDoc.status = "scheduled";
-    }
-
+    // when execution starts
+    jobDoc.status = "running";
     jobDoc.lastRunAt = new Date();
     await jobDoc.save();
-  } catch (error) {
-    console.error(
-      `Failed to update job status for job ID ${job.data.jobId}:`,
-      error
-    );
+  } catch (e) {
+    console.error("active status update error:", e);
   }
 });
+
+
+jobWorker.on("completed", async (job) => {
+  try {
+    const jobDoc = await jobModel.findById(job.data.jobId);
+    if (!jobDoc) return;
+
+    jobDoc.lastRunAt = new Date();
+
+    if (jobDoc.type === "one-time") {
+      jobDoc.status = "completed";
+    } else {
+      // recurring job should remain enabled
+      jobDoc.status = "active";
+    }
+
+    await jobDoc.save();
+
+    // also write a success log (recommended)
+    await logModel.create({
+      jobId: job.data.jobId,
+      jobname: job.data.name,
+      command: job.data.command,
+      status: "success",
+      runAt: new Date(),
+      durationMs: 0,
+    });
+  } catch (e) {
+    console.error("completed status update error:", e);
+  }
+});
+
 
 jobWorker.on("failed", async (job, err) => {
   console.log(`❌ Job ${job?.id} failed: ${err.message}`);
@@ -179,26 +201,5 @@ jobWorker.on("failed", async (job, err) => {
   }
 });
 
-jobWorker.on("active", async(job) => {
-  console.log(`🚀 Job ${job.id} is now active`);
-  try {
-    const jobDoc = await jobModel.findById(job.data.jobId);
-    if (!jobDoc) return;
-
-    if (jobDoc.type === "one-time" || job.data.jobType === "one-time") {
-      jobDoc.status = "completed";
-    } else {
-      jobDoc.status = "active";
-    }
-
-    jobDoc.lastRunAt = new Date();
-    await jobDoc.save();
-  } catch (error) {
-    console.error(
-      `Failed to update job status for job ID ${job.data.jobId}:`,
-      error
-    );
-  }
-});
 
 module.exports = jobWorker;
