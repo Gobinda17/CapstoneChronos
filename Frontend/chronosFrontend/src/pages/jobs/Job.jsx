@@ -65,7 +65,7 @@ const Job = () => {
   const getStatusColor = (status) => {
     if (!status) return "default";
     switch (status.toLowerCase()) {
-      case "running":
+      case "active":
         return "info";
       case "success":
       case "completed":
@@ -73,7 +73,7 @@ const Job = () => {
       case "failed":
       case "error":
         return "danger";
-      case "pending":
+      case "scheduled":
         return "warning";
       default:
         return "default";
@@ -297,6 +297,9 @@ const Job = () => {
                       Schedule Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Schedule At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Run At
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -329,7 +332,7 @@ const Job = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {job.createdAt}
+                        {new Date(job.createdAt).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge variant={getStatusColor(job.status)}>
@@ -345,25 +348,28 @@ const Job = () => {
                         {job.type}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {job.lastRunAt}
+                        {job.scheduledAt ? new Date(job.scheduledAt).toLocaleString() : 'Not Applicable'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {job.lastRunAt ? new Date(job.lastRunAt).toLocaleString() : 'Not Applicable'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
-                          {job.type === "one-time" ? (
+                          {job.type === "one-time" && job.status === "completed" ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="whitespace-nowrap"
+                              className="whitespace-nowrap w-full"
                               onClick={() => rerunJob(job._id)}
                             >
                               <i className="ri-replay-5-line mr-1"></i>
                               Re-Run
                             </Button>
-                          ) : (
+                          ) : job.type === "recurring" ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="whitespace-nowrap"
+                              className="whitespace-nowrap w-full"
                               onClick={() => toggleJobStatus(job._id)}
                             >
                               {job.status === "active" ? (
@@ -378,11 +384,11 @@ const Job = () => {
                                 </>
                               )}
                             </Button>
-                          )}
+                          ) : null}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="whitespace-nowrap"
+                            className="whitespace-nowrap w-full"
                             onClick={() => {
                               setShowNewJobModal(true);
                               editJob(job._id);
@@ -394,7 +400,7 @@ const Job = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 whitespace-nowrap"
+                            className="text-red-600 hover:text-red-700 whitespace-nowrap w-full"
                             onClick={() => deleteAjob(job._id)}
                           >
                             <i className="ri-delete-bin-line mr-1"></i>
@@ -425,7 +431,16 @@ const Job = () => {
                             {job.name}
                           </h3>
                           <p className="text-xs text-gray-500 mt-1">
-                            Schedule: {job.schedule}
+                            Schedule Type: {job.type}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Created At: {new Date(job.createdAt).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Schedule At: {job.scheduledAt ? new Date(job.scheduledAt).toLocaleString() : 'Not Applicable'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Last Run At: {job.lastRunAt ? new Date(job.lastRunAt).toLocaleString() : 'Not Applicable'}
                           </p>
                         </div>
                       </div>
@@ -435,59 +450,68 @@ const Job = () => {
                     </div>
 
                     <div className="text-xs text-gray-600 mb-3 break-all">
-                      {job.command}
+                      Command: {job.command}
+                    </div>
+                    <div className="text-xs text-gray-600 mb-3 break-all">
+                      Cron Expression: {job.type === "recurring"
+                          ? job.cronExpr
+                          : "Not Applicable"}
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500">
-                        <span>Next: {job.nextRun}</span>
-                        <span className="hidden sm:inline">•</span>
-                        <span>
-                          Success:{" "}
-                          {(
-                            (job.successCount /
-                              (job.successCount + job.errorCount)) *
-                            100
-                          ).toFixed(1)}
-                          %
-                        </span>
-                      </div>
-
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => toggleJobStatus(job._id)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                            job.enabled ? "bg-blue-600" : "bg-gray-200"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                              job.enabled ? "translate-x-5" : "translate-x-1"
-                            }`}
-                          />
-                        </button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="whitespace-nowrap"
-                        >
-                          <i className="ri-play-line"></i>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="whitespace-nowrap"
-                        >
-                          <i className="ri-edit-line"></i>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 whitespace-nowrap"
-                        >
-                          <i className="ri-delete-bin-line"></i>
-                        </Button>
-                      </div>
+                          {job.type === "one-time" && job.status === "completed" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap w-full"
+                              onClick={() => rerunJob(job._id)}
+                            >
+                              <i className="ri-replay-5-line mr-1"></i>
+                              Re-Run
+                            </Button>
+                          ) : job.type === "recurring" ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap w-full"
+                              onClick={() => toggleJobStatus(job._id)}
+                            >
+                              {job.status === "active" ? (
+                                <>
+                                  <i className="ri-pause-line mr-1"></i>
+                                  Pause
+                                </>
+                              ) : (
+                                <>
+                                  <i className="ri-play-line mr-1"></i>
+                                  Play
+                                </>
+                              )}
+                            </Button>
+                          ) : null}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="whitespace-nowrap w-full"
+                            onClick={() => {
+                              setShowNewJobModal(true);
+                              editJob(job._id);
+                            }}
+                          >
+                            <i className="ri-edit-line mr-1"></i>
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 whitespace-nowrap w-full"
+                            onClick={() => deleteAjob(job._id)}
+                          >
+                            <i className="ri-delete-bin-line mr-1"></i>
+                            Delete
+                          </Button>
+                        </div>
                     </div>
                   </div>
                 ))}

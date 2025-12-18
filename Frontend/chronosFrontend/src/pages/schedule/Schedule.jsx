@@ -14,43 +14,10 @@ const Schedule = () => {
     new Date().toISOString().split("T")[0]
   );
   const [viewMode, setViewMode] = useState("week");
-  const [ jobDetails, setJobDetails ] = useState([]);
-
-
-  const mockCronJobs = [
-    {
-      id: "1",
-      name: "Database Backup",
-      schedule: "0 2 * * *",
-      command: "pg_dump -h localhost -U postgres mydb > backup.sql",
-      status: "running",
-      lastRun: "2024-01-15T02:00:00Z",
-      nextRun: "2024-01-16T02:00:00Z",
-      description: "Daily database backup at 2 AM",
-      enabled: true,
-      successCount: 45,
-      errorCount: 2,
-      avgDuration: 120000,
-    },
-    {
-      id: "2",
-      name: "Email Newsletter",
-      schedule: "0 9 * * 1",
-      command: "node /app/scripts/send-newsletter.js",
-      status: "success",
-      lastRun: "2024-01-15T09:00:00Z",
-      nextRun: "2024-01-22T09:00:00Z",
-      description: "Weekly newsletter sent every Monday at 9 AM",
-      enabled: true,
-      successCount: 12,
-      errorCount: 0,
-      avgDuration: 45000,
-    },
-  ];
+  const [jobDetails, setJobDetails] = useState([]);
 
   useEffect(() => {
     setLoading(true);
-    // console.log("Selected Date:", selectedDate);
     const fetchJobDetails = async () => {
       try {
         const response = await api.get(`/jobs/${selectedDate}/details`);
@@ -65,26 +32,66 @@ const Schedule = () => {
     fetchJobDetails();
   }, [selectedDate]);
 
+  const getJobDateField = (job) =>
+    job.type === "one-time" ? job.scheduledAt : job.runAt;
+
+  const groupJobsByDate = (jobs) => {
+    const map = {};
+    for (const job of jobs) {
+      const dt = getJobDateField(job);
+      if (!dt) continue;
+
+      const key = toDateKeyIST(dt);
+      if (!map[key]) map[key] = [];
+      map[key].push(job);
+    }
+    return map;
+  };
+
+  const toDateKeyIST = (dateLike) => {
+    const d = new Date(dateLike);
+
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(d);
+
+    const y = parts.find((p) => p.type === "year").value;
+    const m = parts.find((p) => p.type === "month").value;
+    const day = parts.find((p) => p.type === "day").value;
+
+    return `${y}-${m}-${day}`; // YYYY-MM-DD
+  };
+
   // Generate calendar data for the selected period
   const getScheduleData = () => {
     const baseDate = new Date(selectedDate);
-    const scheduleData = [];
+    baseDate.setHours(0, 0, 0, 0);
 
+    const jobsByDate = groupJobsByDate(jobDetails);
+
+    const scheduleData = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(baseDate);
       date.setDate(baseDate.getDate() + i);
 
-      const dayJobs = jobDetails.filter((job, index) => {
-        // Simulate jobs scheduled for different days
-        const jobDay = (index + 1) % 7;
-        return jobDay === date.getDay();
-      });
+      const dateKey = toDateKeyIST(date);
 
       scheduleData.push({
-        date: date.toISOString().split("T")[0],
-        dayName: date.toLocaleDateString("en-US", { weekday: "short" }),
-        dayNumber: date.getDate(),
-        jobs: dayJobs,
+        date: dateKey,
+        dayName: new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Kolkata",
+          weekday: "short",
+        }).format(date),
+        dayNumber: Number(
+          new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+          }).format(date)
+        ),
+        jobs: jobsByDate[dateKey] || [],
       });
     }
 
@@ -96,7 +103,7 @@ const Schedule = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "running":
+      case "active":
         return "bg-blue-500";
       case "completed":
         return "bg-green-500";
@@ -106,6 +113,24 @@ const Schedule = () => {
         return "bg-yellow-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const getStatusBadgeColor = (status) => {
+    if (!status) return "default";
+    switch (status.toLowerCase()) {
+      case "active":
+        return "info";
+      case "success":
+      case "completed":
+        return "success";
+      case "failed":
+      case "error":
+        return "danger";
+      case "scheduled":
+        return "warning";
+      default:
+        return "default";
     }
   };
 
@@ -221,15 +246,15 @@ const Schedule = () => {
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Success</span>
+              <span>Completed</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <span>Running</span>
+              <span>Active</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Error</span>
+              <span>Failed</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
@@ -240,67 +265,79 @@ const Schedule = () => {
       </Card>
 
       {/* Schedule Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 mt-4">
-        {scheduleData.map((day) => (
-          <Card key={day.date} className="p-4">
-            <div className="text-center mb-4">
-              <div className="text-sm font-medium text-gray-600">
-                {day.dayName}
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {day.dayNumber}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {day.jobs.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <i className="ri-calendar-line text-2xl mb-2"></i>
-                  <p className="text-sm">No jobs scheduled</p>
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <i className="ri-loader-4-line animate-spin text-2xl text-gray-400"></i>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-4">
+          {scheduleData.map((day, index) => (
+            <Card
+              key={day.date}
+              className={`p-4 col-span-1 ${index === 6 && "lg:col-span-2"}`}
+            >
+              <div className="text-center mb-4">
+                <div className="text-sm font-medium text-gray-600">
+                  {day.dayName}
                 </div>
-              ) : (
-                day.jobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${getStatusColor(
-                          job.status
-                        )}`}
-                      ></div>
-                      <Badge
-                        variant={
-                          job.status === "completed"
-                            ? "success"
-                            : job.status === "failed"
-                            ? "failed"
-                            : "default"
-                        }
-                      >
-                        {job.status}
-                      </Badge>
-                    </div>
-                    <div className="text-sm font-medium text-gray-900 truncate mb-1">
-                      {job.name}
-                    </div>
-                    <div className="text-xs text-gray-600 truncate">
-                      {job.schedule}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Next: {job.nextRun}
-                    </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {day.dayNumber}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {day.jobs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <i className="ri-calendar-line text-2xl mb-2"></i>
+                    <p className="text-sm">No jobs scheduled</p>
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
+                ) : (
+                  day.jobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${getStatusColor(
+                            job.status
+                          )}`}
+                        ></div>
+                        <Badge variant={getStatusBadgeColor(job.status)}>
+                          {job.status}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                        {job.name} - {job.type}
+                      </div>
+                      {job.type === "one-time" ? (
+                        <div className="text-xs text-gray-600 truncate">
+                          {job.scheduledAt
+                            ? new Date(job.scheduledAt).toLocaleString()
+                            : "Not Scheduled"}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-600 truncate">
+                          {job.cronExpr}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        Run At:{" "}
+                        {job.runAt
+                          ? new Date(job.runAt).toLocaleString()
+                          : "N/A"}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Upcoming Jobs */}
-      <Card className="p-6 mt-4">
+      {/* <Card className="p-6 mt-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Upcoming Jobs (Next 24 Hours)
         </h3>
@@ -340,7 +377,7 @@ const Schedule = () => {
             </div>
           ))}
         </div>
-      </Card>
+      </Card> */}
     </div>
   );
 };
