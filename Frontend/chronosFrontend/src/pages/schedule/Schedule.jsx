@@ -1,15 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/base/Card";
 import { Button } from "../../components/base/Button";
 import { Input } from "../../components/base/Input";
 import { Badge } from "../../components/base/Badge";
+import api from "../../api";
 
 const Schedule = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [viewMode, setViewMode] = useState("week");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [ jobDetails, setJobDetails ] = useState([]);
+
 
   const mockCronJobs = [
     {
@@ -42,18 +48,35 @@ const Schedule = () => {
     },
   ];
 
+  useEffect(() => {
+    setLoading(true);
+    // console.log("Selected Date:", selectedDate);
+    const fetchJobDetails = async () => {
+      try {
+        const response = await api.get(`/jobs/${selectedDate}/details`);
+        setJobDetails(response.data.jobs);
+      } catch (error) {
+        console.error("Error fetching job details:", error);
+        setError("Failed to load job details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJobDetails();
+  }, [selectedDate]);
+
   // Generate calendar data for the selected period
   const getScheduleData = () => {
-    const today = new Date();
+    const baseDate = new Date(selectedDate);
     const scheduleData = [];
 
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+      const date = new Date(baseDate);
+      date.setDate(baseDate.getDate() + i);
 
-      const dayJobs = mockCronJobs.filter((job) => {
+      const dayJobs = jobDetails.filter((job, index) => {
         // Simulate jobs scheduled for different days
-        const jobDay = job.id % 7;
+        const jobDay = (index + 1) % 7;
         return jobDay === date.getDay();
       });
 
@@ -69,14 +92,15 @@ const Schedule = () => {
   };
 
   const scheduleData = getScheduleData();
+  console.log("Schedule Data:", scheduleData);
 
   const getStatusColor = (status) => {
     switch (status) {
       case "running":
         return "bg-blue-500";
-      case "success":
+      case "completed":
         return "bg-green-500";
-      case "error":
+      case "failed":
         return "bg-red-500";
       case "scheduled":
         return "bg-yellow-500";
@@ -85,8 +109,44 @@ const Schedule = () => {
     }
   };
 
+  // Navigate to previous period
+  const handlePrevious = () => {
+    const currentDate = new Date(selectedDate);
+
+    if (viewMode === "day") {
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else if (viewMode === "week") {
+      currentDate.setDate(currentDate.getDate() - 7);
+    } else if (viewMode === "month") {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+    }
+
+    setSelectedDate(currentDate.toISOString().split("T")[0]);
+  };
+
+  // Navigate to next period
+  const handleNext = () => {
+    const currentDate = new Date(selectedDate);
+    console.log("Current Date before increment:", currentDate);
+
+    if (viewMode === "day") {
+      currentDate.setDate(currentDate.getDate() + 1);
+    } else if (viewMode === "week") {
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else if (viewMode === "month") {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    setSelectedDate(currentDate.toISOString().split("T")[0]);
+  };
+
+  // Navigate to today
+  const handleToday = () => {
+    setSelectedDate(new Date().toISOString().split("T")[0]);
+  };
+
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -112,7 +172,7 @@ const Schedule = () => {
             ))}
           </div>
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => navigate("/dashboard/jobs")}
             className="whitespace-nowrap"
           >
             <i className="ri-add-line mr-2"></i>
@@ -122,7 +182,7 @@ const Schedule = () => {
       </div>
 
       {/* Calendar Controls */}
-      <Card className="p-4">
+      <Card className="p-4 mt-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Input
@@ -132,13 +192,28 @@ const Schedule = () => {
               className="w-auto"
             />
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={handlePrevious}
+              >
                 <i className="ri-arrow-left-line"></i>
               </Button>
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={handleToday}
+              >
                 Today
               </Button>
-              <Button variant="outline" size="sm" className="whitespace-nowrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                onClick={handleNext}
+              >
                 <i className="ri-arrow-right-line"></i>
               </Button>
             </div>
@@ -165,7 +240,7 @@ const Schedule = () => {
       </Card>
 
       {/* Schedule Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 mt-4">
         {scheduleData.map((day) => (
           <Card key={day.date} className="p-4">
             <div className="text-center mb-4">
@@ -197,10 +272,10 @@ const Schedule = () => {
                       ></div>
                       <Badge
                         variant={
-                          job.status === "success"
+                          job.status === "completed"
                             ? "success"
-                            : job.status === "error"
-                            ? "error"
+                            : job.status === "failed"
+                            ? "failed"
                             : "default"
                         }
                       >
@@ -225,7 +300,7 @@ const Schedule = () => {
       </div>
 
       {/* Upcoming Jobs */}
-      <Card className="p-6">
+      <Card className="p-6 mt-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Upcoming Jobs (Next 24 Hours)
         </h3>
@@ -266,76 +341,6 @@ const Schedule = () => {
           ))}
         </div>
       </Card>
-
-      {/* Create Job Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Schedule New Job</h3>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <i className="ri-close-line text-xl"></i>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Name
-                </label>
-                <Input placeholder="Enter job name" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Command
-                </label>
-                <Input placeholder="Enter command to execute" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Schedule (Cron Expression)
-                </label>
-                <Input placeholder="0 0 * * *" />
-                <p className="text-xs text-gray-500 mt-1">
-                  Example: 0 0 * * * (daily at midnight)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Optional description"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 whitespace-nowrap"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 whitespace-nowrap"
-              >
-                Schedule Job
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
