@@ -59,4 +59,7 @@ router.post(
   jobController.rerunAJob.bind(jobController)
 );
 
+// Get all Job's Details in a Week
+router.get('/:date/details', authMiddleware.validateAccessToken.bind(authMiddleware), jobController.getJobDetailsInRange.bind(jobController));
+
 module.exports = router;

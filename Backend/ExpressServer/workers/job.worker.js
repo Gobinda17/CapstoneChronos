@@ -145,7 +145,7 @@ jobWorker.on("completed", async (job) => {
     if (jobDoc.type === "one-time" || job.data.jobType === "one-time") {
       jobDoc.status = "completed";
     } else {
-      jobDoc.status = "active";
+      jobDoc.status = "scheduled";
     }
 
     jobDoc.lastRunAt = new Date();
@@ -171,6 +171,28 @@ jobWorker.on("failed", async (job, err) => {
       durationMs: 0, // or compute if you track start elsewhere
       error: err.message,
     });
+  } catch (error) {
+    console.error(
+      `Failed to update job status for job ID ${job.data.jobId}:`,
+      error
+    );
+  }
+});
+
+jobWorker.on("active", async(job) => {
+  console.log(`🚀 Job ${job.id} is now active`);
+  try {
+    const jobDoc = await jobModel.findById(job.data.jobId);
+    if (!jobDoc) return;
+
+    if (jobDoc.type === "one-time" || job.data.jobType === "one-time") {
+      jobDoc.status = "completed";
+    } else {
+      jobDoc.status = "active";
+    }
+
+    jobDoc.lastRunAt = new Date();
+    await jobDoc.save();
   } catch (error) {
     console.error(
       `Failed to update job status for job ID ${job.data.jobId}:`,

@@ -1,5 +1,6 @@
 const jobModel = require("../models/job.model");
 const userModel = require("../models/user.model");
+const { CronExpressionParser } = require("cron-parser");
 
 const {
   enqueueJob,
@@ -227,7 +228,10 @@ class JobController {
     const id = req.params.id;
     try {
       const user = await userModel.findOne({ email: req.user.id });
-      const job = await jobModel.findOneAndUpdate({ _id: id, createdBy: user._id }, { status: "active" });
+      const job = await jobModel.findOneAndUpdate(
+        { _id: id, createdBy: user._id },
+        { status: "active" }
+      );
       if (!job) {
         return res.status(404).json({
           status: "error",
@@ -245,6 +249,118 @@ class JobController {
         status: "error",
         message: `Message: ${error}`,
       });
+    }
+  };
+
+  getJobDetailsInRange = async (req, res) => {
+    try {
+      const user = await userModel.findOne({ email: req.user.id });
+
+      const occurrences = [];
+      const startDate = new Date(req.params.date);
+      if (isNaN(startDate.getTime())) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Invalid date parameter" });
+      }
+
+      // ✅ Your calendar is IST; keep day boundaries in IST-style? (You are using setHours local)
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6); // ✅ 7-day window (start + 6)
+      endDate.setHours(23, 59, 59, 999);
+
+      // 1) One-time jobs
+      const oneTimeJobs = await jobModel
+        .find({
+          createdBy: user._id,
+          type: "one-time",
+          scheduledAt: { $gte: startDate, $lte: endDate },
+        })
+        .lean();
+
+      for (const job of oneTimeJobs) {
+        occurrences.push({
+          jobId: job._id,
+          name: job.name,
+          type: job.type,
+          command: job.command,
+          status: job.status,
+          lastRunAt: job.lastRunAt,
+          scheduledAt: job.scheduledAt,
+          description: job.description,
+        });
+      }
+
+      const tz = "Asia/Kolkata";
+
+      // ✅ 2) Recurring jobs: DO NOT restrict by createdAt within range
+      // Include all active recurring jobs for this user
+      const recurringJobs = await jobModel
+        .find({
+          createdBy: user._id,
+          type: "recurring",
+          cronExpr: { $exists: true, $ne: null },
+          status: "active",
+        })
+        .lean();
+
+      for (const rjob of recurringJobs) {
+        try {
+          // ✅ Don’t generate occurrences before the job was created
+          const createdAt = new Date(rjob.createdAt);
+          const effectiveStart =
+            createdAt.getTime() > startDate.getTime() ? createdAt : startDate;
+
+          const parseOpts = { currentDate: effectiveStart, endDate };
+          if (tz) parseOpts.tz = tz;
+
+          const interval = CronExpressionParser.parse(rjob.cronExpr, parseOpts);
+
+          let iterations = 0;
+          const maxIterations = 1000; // cron like */1 * * * * might need more for 7 days
+
+          while (true) {
+            if (++iterations > maxIterations) break;
+
+            const next = interval.next();
+            const dtObj = next.toDate
+              ? next.toDate()
+              : new Date(next.toString());
+
+            if (dtObj.getTime() > endDate.getTime()) break;
+
+            occurrences.push({
+              jobId: rjob._id,
+              name: rjob.name,
+              type: rjob.type,
+              command: rjob.command,
+              status: rjob.status,
+              description: rjob.description,
+              cronExpr: rjob.cronExpr,
+              runAt: dtObj.toISOString(),
+              runAtLocal: tz
+                ? dtObj.toLocaleString("en-GB", { timeZone: tz, hour12: false })
+                : dtObj.toISOString(),
+            });
+          }
+        } catch (err) {
+          // invalid cron or no more occurrences
+          continue;
+        }
+      }
+
+      return res.status(200).json({
+        status: "success",
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        jobs: occurrences,
+      });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ status: "error", message: `Message: ${error}` });
     }
   };
 }
