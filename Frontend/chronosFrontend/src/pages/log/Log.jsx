@@ -1,72 +1,131 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Card } from "../../components/base/Card";
 import { Button } from "../../components/base/Button";
 import { Badge } from "../../components/base/Badge";
 import { Input } from "../../components/base/Input";
+import api from "../../api";
 
 const Log = () => {
   const [logs, setLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedLog, setExpandedLog] = useState(null);
+  const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
+
+  const [filteredLogs, setFilteredLogs] = useState([]);
+  const [appliedDateRange, setAppliedDateRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const logsPerPage = 20;
+  const [currentLogs, setCurrentLogs] = useState([]);
+  const [indexOfFirstLog, setIndexOfFirstLog] = useState(0);
+  const [indexOfLastLog, setIndexOfLastLog] = useState(0);
 
   useEffect(() => {
-    // Generate mock logs
-    const mockLogs = Array.from({ length: 50 }, (_, i) => {
-      const statuses = ["success", "error", "running"];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const jobNames = [
-        "Database Backup",
-        "Email Cleanup",
-        "Log Rotation",
-        "Cache Clear",
-        "Report Generation",
-      ];
+    const fetchLogs = async () => {
+      try {
+        const response = await api.get(
+          `/logs?page=${currentPage}&limit=${logsPerPage}`
+        );
+        console.log(response.data.logs);
+        setTotalPages(response.data.logs.totalPages);
+        setLogs(
+          response.data.logs.items.sort(
+            (a, b) => new Date(b.runAt).getTime() - new Date(a.runAt).getTime()
+          )
+        );
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+      }
+    };
 
-      return {
-        id: `log-${i}`,
-        jobName: jobNames[Math.floor(Math.random() * jobNames.length)],
-        status,
-        timestamp: new Date(
-          Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        duration: Math.floor(Math.random() * 10000) + 100,
-        output:
-          status === "success"
-            ? "Job completed successfully. All tasks executed without errors."
-            : status === "error"
-            ? "Error: Connection timeout. Failed to connect to database server."
-            : "Job is currently running...",
-        error:
-          status === "error"
-            ? "Database connection failed: timeout after 30 seconds"
-            : undefined,
-      };
-    });
+    fetchLogs();
+  }, [currentPage]);
 
-    setLogs(
-      mockLogs.sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      )
-    );
-  }, []);
+  useEffect(() => {
+    let filtered = logs;
+    console.log("Filtering logs...", logs);
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.jobName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.output.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || log.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (log) =>
+          log.jobname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          log.command.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((log) => log.status === statusFilter);
+    }
+
+    // Apply date range filter
+    if (appliedDateRange.startDate && appliedDateRange.endDate) {
+      const startDate = new Date(appliedDateRange.startDate);
+      const endDate = new Date(appliedDateRange.endDate);
+      endDate.setHours(23, 59, 59, 999); // Include the entire end date
+
+      filtered = filtered.filter((log) => {
+        const logDate = new Date(log.runAt);
+        return logDate >= startDate && logDate <= endDate;
+      });
+    }
+
+    setFilteredLogs(filtered);
+  }, [logs, searchTerm, statusFilter, appliedDateRange, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, appliedDateRange]);
+
+  useEffect(() => {
+    setIndexOfLastLog(currentPage * logsPerPage);
+    setIndexOfFirstLog(indexOfLastLog - logsPerPage);
+    setCurrentLogs(filteredLogs.slice(indexOfFirstLog, indexOfLastLog));
+  }, [logs]);
+
+  // useEffect(() => {
+  //   const indexOfLastLog = currentPage * logsPerPage;
+  //   const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  //   setCurrentLogs(filteredLogs.slice(indexOfFirstLog, indexOfLastLog));
+  // }, [filteredLogs, currentPage]);
+
+  // const filteredLogs = logs.filter((log) => {
+  //   const matchesSearch =
+  //     log.jobName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     log.output.toLowerCase().includes(searchTerm.toLowerCase());
+  //   const matchesStatus = statusFilter === "all" || log.status === statusFilter;
+  //   return matchesSearch && matchesStatus;
+  // });
+
+  const handleDateRangeClear = () => {
+    setDateRange({ startDate: "", endDate: "" });
+    setAppliedDateRange({ startDate: "", endDate: "" });
+    setShowDateRangeModal(false);
+  };
+
+  const handleDateRangeApply = () => {
+    if (dateRange.startDate && dateRange.endDate) {
+      setAppliedDateRange(dateRange);
+      setShowDateRangeModal(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "running":
+      case "active":
         return "blue";
-      case "success":
+      case "completed":
         return "green";
-      case "error":
+      case "failed":
         return "red";
       default:
         return "gray";
@@ -83,8 +142,29 @@ const Log = () => {
     setExpandedLog(expandedLog === logId ? null : logId);
   };
 
+  // const indexOfLastLog = currentPage * logsPerPage;
+  // const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  // const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+  // // setCurrentLogs(filteredLogs.slice(indexOfFirstLog, indexOfLastLog));
+  // const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, appliedDateRange]);
+
   return (
-    <div className="space-y-6">
+    <div>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -100,15 +180,11 @@ const Log = () => {
             <i className="ri-refresh-line mr-2"></i>
             Refresh
           </Button>
-          <Button variant="outline" className="whitespace-nowrap">
-            <i className="ri-download-line mr-2"></i>
-            Export
-          </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 lg:p-6">
+      <Card className="p-4 lg:p-6 mt-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
             <Input
@@ -129,7 +205,11 @@ const Log = () => {
               <option value="error">Error</option>
               <option value="running">Running</option>
             </select>
-            <Button variant="outline" className="whitespace-nowrap">
+            <Button
+              variant="outline"
+              className="whitespace-nowrap"
+              onClick={() => setShowDateRangeModal(true)}
+            >
               <i className="ri-calendar-line mr-2"></i>
               Date Range
             </Button>
@@ -138,15 +218,15 @@ const Log = () => {
       </Card>
 
       {/* Logs List */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden mt-4">
         <div className="divide-y divide-gray-200">
-          {filteredLogs.map((log) => (
-            <div key={log.id} className="p-4 lg:p-6">
+          {currentLogs.map((log) => (
+            <div key={log._id} className="p-4 lg:p-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                     <h3 className="text-sm lg:text-base font-medium text-gray-900 truncate">
-                      {log.jobName}
+                      {log.jobname}
                     </h3>
                     <Badge variant={getStatusColor(log.status)} size="sm">
                       {log.status}
@@ -154,9 +234,9 @@ const Log = () => {
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs lg:text-sm text-gray-500">
-                    <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    <span>{new Date(log.runAt).toLocaleString()}</span>
                     <span className="hidden sm:inline">•</span>
-                    <span>Duration: {formatDuration(log.duration)}</span>
+                    <span>Duration: {formatDuration(log.durationMs)}</span>
                   </div>
 
                   {/* Log Output Preview */}
@@ -171,29 +251,21 @@ const Log = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toggleLogExpansion(log.id)}
+                    onClick={() => toggleLogExpansion(log._id)}
                     className="whitespace-nowrap"
                   >
                     <i
                       className={`ri-${
-                        expandedLog === log.id ? "arrow-up" : "arrow-down"
+                        expandedLog === log._id ? "arrow-up" : "arrow-down"
                       }-s-line mr-1`}
                     ></i>
                     {expandedLog === log.id ? "Collapse" : "Details"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="whitespace-nowrap"
-                  >
-                    <i className="ri-download-line mr-1"></i>
-                    Export
                   </Button>
                 </div>
               </div>
 
               {/* Expanded Log Details */}
-              {expandedLog === log.id && (
+              {expandedLog === log._id && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="space-y-4">
                     <div>
@@ -225,7 +297,7 @@ const Log = () => {
                         <span className="font-medium text-gray-900">
                           Job ID:
                         </span>
-                        <p className="text-gray-600 break-all">{log.id}</p>
+                        <p className="text-gray-600 break-all">{log.jobId}</p>
                       </div>
                       <div>
                         <span className="font-medium text-gray-900">
@@ -238,7 +310,7 @@ const Log = () => {
                           Duration:
                         </span>
                         <p className="text-gray-600">
-                          {formatDuration(log.duration)}
+                          {formatDuration(log.durationMs)}
                         </p>
                       </div>
                       <div>
@@ -246,7 +318,7 @@ const Log = () => {
                           Timestamp:
                         </span>
                         <p className="text-gray-600">
-                          {new Date(log.timestamp).toLocaleString()}
+                          {new Date(log.runAt).toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -274,21 +346,163 @@ const Log = () => {
 
       {/* Pagination */}
       {filteredLogs.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
           <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">1</span> to{" "}
-            <span className="font-medium">20</span> of{" "}
-            <span className="font-medium">{filteredLogs.length}</span> results
+            Showing <span className="font-medium">{indexOfFirstLog + 1}</span>{" "}
+            to{" "}
+            <span className="font-medium">
+              {Math.min(indexOfLastLog, filteredLogs.length)}
+            </span>{" "}
+            of <span className="font-medium">{filteredLogs.length}</span>{" "}
+            results
           </p>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" className="whitespace-nowrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
               <i className="ri-arrow-left-line mr-1"></i>
               Previous
             </Button>
-            <Button variant="outline" size="sm" className="whitespace-nowrap">
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                      currentPage === pageNum
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
               Next
               <i className="ri-arrow-right-line ml-1"></i>
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Date Range Modal */}
+      {showDateRangeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Select Date Range
+                </h2>
+                <button
+                  onClick={() => setShowDateRangeModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <i className="ri-close-line text-xl text-gray-500"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label
+                  htmlFor="startDate"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Start Date
+                </label>
+                <input
+                  id="startDate"
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, startDate: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="endDate"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  End Date
+                </label>
+                <input
+                  id="endDate"
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, endDate: e.target.value })
+                  }
+                  min={dateRange.startDate}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              {dateRange.startDate && dateRange.endDate && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-sm text-blue-900">
+                    <i className="ri-information-line"></i>
+                    <span>
+                      Showing logs from{" "}
+                      {new Date(dateRange.startDate).toLocaleDateString(
+                        "en-US",
+                        { month: "long", day: "numeric", year: "numeric" }
+                      )}{" "}
+                      to{" "}
+                      {new Date(dateRange.endDate).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleDateRangeClear}
+                className="flex-1 whitespace-nowrap"
+              >
+                Clear Filter
+              </Button>
+              <Button
+                onClick={handleDateRangeApply}
+                disabled={!dateRange.startDate || !dateRange.endDate}
+                className="flex-1 whitespace-nowrap"
+              >
+                Apply Filter
+              </Button>
+            </div>
           </div>
         </div>
       )}
