@@ -21,4 +21,28 @@ logSchema.statics.getRecentLogsByJobIds = async function(jobIds, limit = 10) {
     return logs;
 };
 
+logSchema.statics.getLogsByJobIdsWithPagination = async function (
+  jobIds,
+  page = 1,
+  limit = 10
+) {
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    this.find({ jobId: { $in: jobIds } })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    this.countDocuments({ jobId: { $in: jobIds } }),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
 module.exports = mongoose.model("Logs", logSchema, "Logs");

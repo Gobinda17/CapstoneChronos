@@ -3,19 +3,38 @@ const userModel = require("../models/user.model");
 const logModel = require("../models/log.model");
 
 class LogController {
-    recentLogs = async (req, res) => {
-        const { limit } = req.query;
-        try {
-            const userID = await userModel.getUserIdByEmail(req.user.id);
-            const jobIds = await jobModel.getJobIdsByUserId({ createdBy: userID });
-            const logs = await logModel.getRecentLogsByJobIds(jobIds, parseInt(limit));
-            return res.status(200).json({ logs });
-
-        } catch (error) {
-            console.error("Error fetching recent logs:", error);
-            return res.status(500).json({ message: "Internal server error" });
-        }
+  recentLogs = async (req, res) => {
+    const { limit } = req.query;
+    try {
+      const userID = await userModel.getUserIdByEmail(req.user.id);
+      const jobIds = await jobModel.getJobIdsByUserId({ createdBy: userID });
+      const logs = await logModel.getRecentLogsByJobIds(
+        jobIds,
+        parseInt(limit)
+      );
+      return res.status(200).json({ logs });
+    } catch (error) {
+      console.error("Error fetching recent logs:", error);
+      return res.status(500).json({ message: "Internal server error" });
     }
+  };
+
+  getAllLogs = async (req, res) => {
+    const { page, limit } = req.query;
+    try {
+      const userID = await userModel.getUserIdByEmail(req.user.id);
+      const jobIds = await jobModel.getJobIdsByUserId({ createdBy: userID });
+      const logs = await logModel.getLogsByJobIdsWithPagination(
+        jobIds,
+        parseInt(page),
+        parseInt(limit)
+      );
+      return res.status(200).json({ logs });
+    } catch (error) {
+      console.error("Error fetching all logs:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  };
 }
 
 module.exports = new LogController();

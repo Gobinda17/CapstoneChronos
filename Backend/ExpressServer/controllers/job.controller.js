@@ -47,6 +47,8 @@ class JobController {
         await enqueueJob(job);
 
       } else if (job.type === "recurring") {
+        job.status = "active";
+        await job.save();
         await upsertRecurringScheduler(job);
       }
 
