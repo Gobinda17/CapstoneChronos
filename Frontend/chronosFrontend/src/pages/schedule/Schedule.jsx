@@ -7,12 +7,24 @@ import { Badge } from "../../components/base/Badge";
 import api from "../../api";
 
 const Schedule = () => {
+  const getTodayIST = () => {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+
+    const y = parts.find((p) => p.type === "year").value;
+    const m = parts.find((p) => p.type === "month").value;
+    const d = parts.find((p) => p.type === "day").value;
+    return `${y}-${m}-${d}`;
+  };
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(getTodayIST());
   const [viewMode, setViewMode] = useState("week");
   const [jobDetails, setJobDetails] = useState([]);
 
@@ -136,7 +148,7 @@ const Schedule = () => {
 
   // Navigate to previous period
   const handlePrevious = () => {
-    const currentDate = new Date(selectedDate);
+    const currentDate = new Date(`${selectedDate}T00:00:00`);
 
     if (viewMode === "day") {
       currentDate.setDate(currentDate.getDate() - 1);
@@ -146,12 +158,12 @@ const Schedule = () => {
       currentDate.setMonth(currentDate.getMonth() - 1);
     }
 
-    setSelectedDate(currentDate.toISOString().split("T")[0]);
+    setSelectedDate(toDateKeyIST(currentDate));
   };
 
   // Navigate to next period
   const handleNext = () => {
-    const currentDate = new Date(selectedDate);
+    const currentDate = new Date(`${selectedDate}T00:00:00`);
     console.log("Current Date before increment:", currentDate);
 
     if (viewMode === "day") {
@@ -162,12 +174,12 @@ const Schedule = () => {
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    setSelectedDate(currentDate.toISOString().split("T")[0]);
+    setSelectedDate(toDateKeyIST(currentDate));
   };
 
   // Navigate to today
   const handleToday = () => {
-    setSelectedDate(new Date().toISOString().split("T")[0]);
+    setSelectedDate(getTodayIST());
   };
 
   return (
@@ -269,11 +281,13 @@ const Schedule = () => {
         <div className="flex items-center justify-center py-8">
           <i className="ri-loader-4-line animate-spin text-2xl text-gray-400"></i>
         </div>
+      ) : error ? (
+        <div className="text-center py-8 text-red-600 text-sm">{error}</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-4">
           {scheduleData.map((day, index) => (
             <Card
-              key={day.date}
+              key={day.dayNumber}
               className={`p-4 col-span-1 ${index === 6 && "lg:col-span-2"}`}
             >
               <div className="text-center mb-4">
@@ -294,7 +308,7 @@ const Schedule = () => {
                 ) : (
                   day.jobs.map((job) => (
                     <div
-                      key={job.id}
+                      key={job.jobId}
                       className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center justify-between mb-2">
