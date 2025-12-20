@@ -1156,4 +1156,4 @@ For issues, questions, or suggestions:
 
 **Built with ❤️ for AirTribe Capstone Project**
 
-*Last Updated: December 2024*
+*Last Updated: December 2025*
