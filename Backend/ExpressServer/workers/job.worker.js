@@ -1,4 +1,5 @@
 const { Worker } = require("bullmq");
+const { broadcast } = require("../sse/sseHub");
 
 const redisClient = require("../config/redis");
 const jobModel = require("../models/job.model");
@@ -59,6 +60,7 @@ const jobWorker = new Worker(
   "jobs",
   async (bullJob) => {
     const { jobId, userId, name, jobType, payload, command } = bullJob.data;
+    const start = Date.now();
 
     const jobDoc = await jobModel.findById(jobId);
 
@@ -88,7 +90,7 @@ const jobWorker = new Worker(
       );
     }
 
-    const start = Date.now();
+
 
     try {
       console.log(
@@ -105,7 +107,7 @@ const jobWorker = new Worker(
         throw new Error(`Invalid command: ${jobDoc.command}`);
       }
 
-      const result = await handler(jobDoc.command);
+      const result = await handler(command);
 
       await logModel.create({
         jobId,
@@ -143,6 +145,14 @@ jobWorker.on("active", async (job) => {
     jobDoc.status = "running";
     jobDoc.lastRunAt = new Date();
     await jobDoc.save();
+
+    broadcast("job_update", {
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      command: jobDoc.command,
+      type: "running",
+      at: Date.now(),
+    });
   } catch (e) {
     console.error("active status update error:", e);
   }
@@ -170,10 +180,19 @@ jobWorker.on("completed", async (job) => {
       jobId: job.data.jobId,
       jobname: job.data.name,
       command: job.data.command,
-      status: "success",
+      status: "completed",
       runAt: new Date(),
       durationMs: 0,
     });
+
+    broadcast("job_update", {
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      command: jobDoc.command,
+      type: "completed",
+      at: Date.now(),
+    });
+
   } catch (e) {
     console.error("completed status update error:", e);
   }
@@ -183,7 +202,7 @@ jobWorker.on("completed", async (job) => {
 jobWorker.on("failed", async (job, err) => {
   console.log(`❌ Job ${job?.id} failed: ${err.message}`);
   try {
-    await jobModel.findByIdAndUpdate(job.data.jobId, { status: "failed" });
+    const jobDoc = await jobModel.findByIdAndUpdate(job.data.jobId, { status: "failed" });
     await logModel.create({
       jobId: job?.data?.jobId ?? null,
       jobname: job?.data?.name ?? null,
@@ -192,6 +211,15 @@ jobWorker.on("failed", async (job, err) => {
       runAt: new Date(),
       durationMs: 0, // or compute if you track start elsewhere
       error: err.message,
+    });
+
+    broadcast("job_update", {
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      command: jobDoc.command,
+      type: "failed",
+      error: err.message,
+      at: Date.now(),
     });
   } catch (error) {
     console.error(

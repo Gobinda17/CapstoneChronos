@@ -4,6 +4,9 @@ const router = express.Router();
 const authRoutes = require('./auth.routes');
 const jobRoutes = require('./job.routes');
 const logRoutes = require('./log.routes');
+const sseRoutes = require('./sse.routes');
+
+router.use('/sse', sseRoutes);
 
 router.use('/jobs', jobRoutes);
 
