@@ -98,12 +98,12 @@ Perfect for automating tasks like:
   - Works over HTTP (no special protocol)
 - **Alternative Considered**: WebSockets (overkill for one-way notifications)
 
-#### 3. **JWT with Refresh Token Pattern**
-- **Why**: Stateless authentication with enhanced security
+#### 3. **JWT Token Authentication**
+- **Why**: Stateless authentication for scalability
 - **Implementation**: 
-  - Short-lived access tokens (15 minutes)
-  - Long-lived refresh tokens (stored securely)
-  - Cookie-based storage for refresh tokens
+  - JWT tokens for user authentication
+  - Token-based session management
+  - Secure token storage on client side
 
 #### 4. **Separate Job Worker Process**
 - **Why**: Isolates job execution from API server
@@ -253,14 +253,12 @@ REDIS_DB=0
 
 # JWT Configuration
 JWT_SECRET=your_super_secret_jwt_key_here_change_in_production
-JWT_REFRESH_SECRET=your_super_secret_refresh_key_here_change_in_production
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
+JWT_EXPIRES_IN=7d
 
 # Cookie Configuration
 COOKIE_DOMAIN=localhost
 COOKIE_SECURE=false  # Set to true in production with HTTPS
-COOKIE_SAMSITE=lax
+COOKIE_SAMESITE=lax
 
 # CORS Configuration
 FRONTEND_URL=http://localhost:5173
@@ -355,10 +353,7 @@ http://localhost:3001
 
 ### Authentication
 
-All authenticated endpoints require a JWT token in the Authorization header:
-```
-Authorization: Bearer <your_jwt_token>
-```
+Authentication is handled via HTTP-only cookies. After login, the JWT token is automatically set as a cookie and sent with all subsequent requests. No need to manually set Authorization headers.
 
 ---
 
@@ -406,7 +401,6 @@ Content-Type: application/json
   "success": true,
   "message": "Login successful",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "user": {
       "id": "507f1f77bcf86cd799439011",
       "email": "user@example.com",
@@ -416,29 +410,12 @@ Content-Type: application/json
 }
 ```
 
-*Note: Refresh token is set as an HTTP-only cookie*
+*Note: JWT token is automatically set as an HTTP-only cookie named `accessToken`*
 
-#### 3. Refresh Token
-```http
-POST /auth/refresh
-Authorization: Bearer <access_token>
-Cookie: refreshToken=<refresh_token>
-```
-
-**Response (200)**:
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs..."
-  }
-}
-```
-
-#### 4. Logout
+#### 3. Logout
 ```http
 POST /auth/logout
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Response (200)**:
@@ -456,7 +433,7 @@ Authorization: Bearer <access_token>
 #### 1. Create Job
 ```http
 POST /jobs
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 Content-Type: application/json
 
 # One-time Job Example
@@ -506,7 +483,7 @@ Content-Type: application/json
 #### 2. Get All Jobs
 ```http
 GET /jobs?page=1&limit=10&status=active
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Query Parameters**:
@@ -547,7 +524,7 @@ Authorization: Bearer <access_token>
 #### 3. Get Job Statistics
 ```http
 GET /jobs/stats
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Response (200)**:
@@ -568,7 +545,7 @@ Authorization: Bearer <access_token>
 #### 4. Toggle Job Status (Pause/Resume)
 ```http
 PUT /jobs/:id/toggle
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Response (200)**:
@@ -586,7 +563,7 @@ Authorization: Bearer <access_token>
 #### 5. Update Job
 ```http
 PUT /jobs/:id/update
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 Content-Type: application/json
 
 {
@@ -614,7 +591,7 @@ Content-Type: application/json
 #### 6. Delete Job
 ```http
 DELETE /jobs/:id
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Response (200)**:
@@ -632,7 +609,7 @@ Authorization: Bearer <access_token>
 #### 1. Get Recent Logs
 ```http
 GET /logs/recent?limit=20
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Query Parameters**:
@@ -665,7 +642,7 @@ Authorization: Bearer <access_token>
 #### 2. Get All Logs (Paginated)
 ```http
 GET /logs?page=1&limit=20&status=success&jobId=507f1f77bcf86cd799439012
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Query Parameters**:
@@ -697,7 +674,7 @@ Authorization: Bearer <access_token>
 #### Real-time Job Updates
 ```http
 GET /sse/events
-Authorization: Bearer <access_token>
+Cookie: accessToken=<jwt_token>
 ```
 
 **Event Stream Format**:
@@ -714,10 +691,9 @@ data: {"jobId":"507f1f77bcf86cd799439012","status":"failed","error":"Connection 
 
 **Usage in Frontend**:
 ```javascript
+// Cookies are automatically sent with EventSource requests
 const eventSource = new EventSource('http://localhost:3001/sse/events', {
-  headers: {
-    'Authorization': `Bearer ${accessToken}`
-  }
+  withCredentials: true
 });
 
 eventSource.addEventListener('job-update', (event) => {
@@ -1068,10 +1044,11 @@ Error: Invalid cron expression
    - Never commit `.env` files
    - Use environment variable management (e.g., AWS Secrets Manager)
 
-2. **HTTPS**
+2. **HTTPS & Cookies**
    - Enable HTTPS for all communications
-   - Set `COOKIE_SECURE=true`
-   - Update `COOKIE_SAMSITE=strict`
+   - Set `COOKIE_SECURE=true` in production
+   - Set `COOKIE_SAMESITE=strict` for enhanced security
+   - Use secure headers (helmet.js recommended)
 
 3. **Database**
    - Enable MongoDB authentication
