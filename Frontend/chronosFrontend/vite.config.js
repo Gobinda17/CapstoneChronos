@@ -8,5 +8,12 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 8000,
     strictPort: true,
+    proxy: {
+      "/airtribe/capstone/chronos/app/api/v1": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    }
   },
 })

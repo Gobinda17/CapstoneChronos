@@ -283,7 +283,7 @@ const Dashboard = () => {
               Quick Actions
             </h2>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <button
               onClick={() => setShowNewJobModal(true)}
               className="w-full flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left cursor-pointer"
@@ -327,21 +327,6 @@ const Dashboard = () => {
                 <p className="text-sm font-medium text-gray-900">View Logs</p>
                 <p className="text-xs text-gray-600">
                   Check execution history and errors
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate("/dashboard/settings")}
-              className="w-full flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors text-left cursor-pointer"
-            >
-              <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i className="ri-settings-3-line text-xl text-white"></i>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Settings</p>
-                <p className="text-xs text-gray-600">
-                  Configure system preferences
                 </p>
               </div>
             </button>

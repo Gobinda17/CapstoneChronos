@@ -11,7 +11,6 @@ export const Sidebar = ({ isCollapsed, onToggle, isMobileOpen = false, onMobileC
     { name: 'Jobs', href: '/dashboard/jobs', icon: 'ri-timer-line' },
     { name: 'Schedule', href: '/dashboard/schedule', icon: 'ri-calendar-line' },
     { name: 'Logs', href: '/dashboard/logs', icon: 'ri-file-list-3-line' },
-    { name: 'Settings', href: '/dashboard/settings', icon: 'ri-settings-3-line' },
   ];
 
   const handleNavigation = (path) => {
