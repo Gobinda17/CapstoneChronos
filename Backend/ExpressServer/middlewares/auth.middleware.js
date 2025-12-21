@@ -90,6 +90,31 @@ class AuthMiddleware {
       });
     }
   };
+
+  validateEmailUpdate = (req, res, next) => {
+    try {
+      this.#handleValidationErrors(req, res);
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
+  validatePasswordUpdate = (req, res, next) => {
+    try {
+      this.#handleValidationErrors(req, res);
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        status: "error",
+        message: `Message: ${error}`,
+      });
+    }
+  };
+
 }
 
 module.exports = new AuthMiddleware();
