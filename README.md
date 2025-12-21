@@ -253,24 +253,21 @@ REDIS_DB=0
 
 # JWT Configuration
 JWT_SECRET=your_super_secret_jwt_key_here_change_in_production
-JWT_EXPIRES_IN=7d
+JWT_EXPIRATION=1d
+BCRYPT_SALT_ROUNDS=10
 
-# Cookie Configuration
-COOKIE_DOMAIN=localhost
-COOKIE_SECURE=false  # Set to true in production with HTTPS
-COOKIE_SAMESITE=lax
-
-# CORS Configuration
-FRONTEND_URL=http://localhost:5173
+# CORS Configuration (comma-separated list)
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 ### Frontend Environment Variables
 
-Create a `.env` file in `Frontend/chronosFrontend/`:
+The frontend currently reads the API root from `API_BASE_URL` inside [Frontend/chronosFrontend/src/api.js](Frontend/chronosFrontend/src/api.js#L1-L12). Update that constant to match your backend (default: `http://localhost:3001/airtribe/capstone/chronos/app/api/v1`).
+
+If you prefer environment-based configuration, add a `.env` file in `Frontend/chronosFrontend/` and wire it in `api.js`:
 
 ```env
-# API Configuration
-VITE_API_BASE_URL=http://localhost:3001
+VITE_API_BASE_URL=http://localhost:3001/airtribe/capstone/chronos/app/api/v1
 ```
 
 ### Security Notes
@@ -348,8 +345,10 @@ The frontend will start on `http://localhost:5173`
 
 ### Base URL
 ```
-http://localhost:3001
+http://localhost:3001/airtribe/capstone/chronos/app/api/v1
 ```
+
+All examples below use the prefixed API gateway path. The Bull Board UI stays at `http://localhost:3001/admin/queues`.
 
 ### Authentication
 
@@ -359,34 +358,25 @@ Authentication is handled via HTTP-only cookies. After login, the JWT token is a
 
 ### Auth Endpoints
 
+All auth routes are served under the API base path. Responses return `status` + `message`, and the `accessToken` cookie is managed automatically on login/refresh/logout.
+
 #### 1. Register User
 ```http
-POST /auth/register
+POST /airtribe/capstone/chronos/app/api/v1/auth/register
 Content-Type: application/json
 
 {
+  "name": "John Doe",
   "email": "user@example.com",
-  "password": "SecurePass123!",
-  "name": "John Doe"
+  "password": "SecurePass123!"
 }
 ```
 
-**Response (201)**:
-```json
-{
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "userId": "507f1f77bcf86cd799439011",
-    "email": "user@example.com",
-    "name": "John Doe"
-  }
-}
-```
+**Response (201)**: plain text `User registered successfully`.
 
 #### 2. Login
 ```http
-POST /auth/login
+POST /airtribe/capstone/chronos/app/api/v1/auth/login
 Content-Type: application/json
 
 {
@@ -395,34 +385,121 @@ Content-Type: application/json
 }
 ```
 
-**Response (200)**:
+**Response (200)** (also sets `accessToken` cookie):
 ```json
 {
-  "success": true,
+  "status": "success",
   "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "507f1f77bcf86cd799439011",
-      "email": "user@example.com",
-      "name": "John Doe"
-    }
+  "user": {
+    "name": "John Doe",
+    "email": "user@example.com"
   }
 }
 ```
 
-*Note: JWT token is automatically set as an HTTP-only cookie named `accessToken`*
-
-#### 3. Logout
+#### 3. Refresh Access Token
 ```http
-POST /auth/logout
+POST /airtribe/capstone/chronos/app/api/v1/auth/refresh
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)** (issues a new cookie):
+```json
+{
+  "status": "success",
+  "message": "Token refreshed successfully",
+  "user": {
+    "name": "John Doe",
+    "email": "user@example.com"
+  }
+}
+```
+
+#### 4. Logout
+```http
+POST /airtribe/capstone/chronos/app/api/v1/auth/logout
 Cookie: accessToken=<jwt_token>
 ```
 
 **Response (200)**:
 ```json
 {
-  "success": true,
-  "message": "Logged out successfully"
+  "status": "success",
+  "message": "Logout successful"
+}
+```
+
+#### 5. Get Current User
+```http
+GET /airtribe/capstone/chronos/app/api/v1/auth/me
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "user": {
+    "email": "user@example.com"
+  }
+}
+```
+
+#### 6. Update Email
+```http
+PUT /airtribe/capstone/chronos/app/api/v1/auth/me/email
+Cookie: accessToken=<jwt_token>
+Content-Type: application/json
+
+{
+  "newEmail": "new@example.com"
+}
+```
+
+**Response (200)** (also refreshes the cookie with the new email):
+```json
+{
+  "status": "success",
+  "message": "Email Updated Successful"
+}
+```
+
+#### 7. Update Password
+```http
+PUT /airtribe/capstone/chronos/app/api/v1/auth/me/password
+Cookie: accessToken=<jwt_token>
+Content-Type: application/json
+
+{
+  "currentPassword": "OldPass123!",
+  "newPassword": "NewPass123!"
+}
+```
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "message": "Password updated successfully"
+}
+```
+
+#### 8. Password Reset (no login required)
+```http
+POST /airtribe/capstone/chronos/app/api/v1/auth/password-reset
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "NewPass123!"
+}
+```
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "message": "Password reset successful"
 }
 ```
 
