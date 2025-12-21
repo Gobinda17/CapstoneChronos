@@ -83,12 +83,31 @@ const Dashboard = () => {
 
   const handleNewJobSubmit = async (e) => {
     e.preventDefault();
-    let { runAt } = newJob;
-    if (runAt !== "") {
-      setNewJob({ ...newJob, runAt: new Date(runAt).toISOString() });
-    }
+    // let { runAt } = newJob;
+    // if (runAt !== "") {
+    //   setNewJob({ ...newJob, runAt: new Date(runAt).toISOString() });
+    // }
     try {
-      await api.post("/jobs", newJob);
+      const payload = {
+        name: newJob.name,
+        maxRetries: Number(newJob.maxRetries) || 0,
+        command: newJob.command,
+        scheduleType: newJob.scheduleType,
+        cronExpr: newJob.scheduleType === "recurring" ? newJob.cronExpr : "",
+        description: newJob.description,
+        runAt: "",
+      };
+
+      if (newJob.scheduleType === "one-time") {
+        if (!newJob.runAt) {
+          alert("Please select Run At time");
+          return;
+        }
+        payload.runAt = new Date(newJob.runAt).toISOString();
+      }
+      
+      await api.post("/jobs", payload);
+
       setShowNewJobModal(false);
       setNewJob({
         name: "",

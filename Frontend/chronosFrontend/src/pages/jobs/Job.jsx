@@ -100,29 +100,43 @@ const Job = () => {
 
   const handleNewJobSubmit = async (e) => {
     e.preventDefault();
-    let { runAt } = newJob;
-    let jobResponse;
-    if (runAt !== "") {
-      setNewJob({ ...newJob, runAt: new Date(runAt).toISOString() });
-    }
-    console.log(editingJobId);
+
     try {
+      const payload = {
+        ...newJob,
+        maxRetries: Number(newJob.maxRetries) || 0,
+      };
+
+      if (payload.scheduleType === "one-time") {
+        if (!payload.runAt) {
+          alert("Please select Run At time");
+          return;
+        }
+        payload.runAt = new Date(payload.runAt).toISOString();
+      } else {
+        payload.runAt = "";
+      }
+
+      let jobResponse;
+
       if (editingJobId) {
-        jobResponse = await api.put(`/jobs/${editingJobId}/update`, newJob);
+        jobResponse = await api.put(`/jobs/${editingJobId}/update`, payload);
+
         setJobs((prevJobs) =>
           prevJobs.map((job) =>
             job._id === editingJobId ? jobResponse.data.job : job
           )
         );
       } else {
-        jobResponse = await api.post("/jobs", newJob);
-        setJobs((prevJobs) => [...prevJobs, jobResponse.data.job]);
+        jobResponse = await api.post("/jobs", payload);
+        setJobs((prevJobs) => [jobResponse.data.job, ...prevJobs]);
       }
+
       setShowNewJobModal(false);
       reset();
     } catch (err) {
-      console.error("Error creating job:", err);
-      alert(err.response?.data?.message || "Failed to create job");
+      console.error("Error saving job:", err);
+      alert(err.response?.data?.message || "Failed to save job");
     }
   };
 
@@ -314,11 +328,10 @@ const Job = () => {
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
                             <div
-                              className={`w-3 h-3 rounded-full ${
-                                job.status === "active"
+                              className={`w-3 h-3 rounded-full ${job.status === "active"
                                   ? "bg-green-400"
                                   : "bg-gray-300"
-                              }`}
+                                }`}
                             ></div>
                           </div>
                           <div className="ml-4">
@@ -422,9 +435,8 @@ const Job = () => {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <div
-                          className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                            job.enabled ? "bg-green-400" : "bg-gray-300"
-                          }`}
+                          className={`w-3 h-3 rounded-full flex-shrink-0 ${job.enabled ? "bg-green-400" : "bg-gray-300"
+                            }`}
                         ></div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-medium text-gray-900 truncate">
@@ -454,64 +466,64 @@ const Job = () => {
                     </div>
                     <div className="text-xs text-gray-600 mb-3 break-all">
                       Cron Expression: {job.type === "recurring"
-                          ? job.cronExpr
-                          : "Not Applicable"}
+                        ? job.cronExpr
+                        : "Not Applicable"}
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center space-x-2">
-                          {job.type === "one-time" && job.status === "completed" ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap w-full"
-                              onClick={() => rerunJob(job._id)}
-                            >
-                              <i className="ri-replay-5-line mr-1"></i>
-                              Re-Run
-                            </Button>
-                          ) : job.type === "recurring" ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap w-full"
-                              onClick={() => toggleJobStatus(job._id)}
-                            >
-                              {job.status === "active" ? (
-                                <>
-                                  <i className="ri-pause-line mr-1"></i>
-                                  Pause
-                                </>
-                              ) : (
-                                <>
-                                  <i className="ri-play-line mr-1"></i>
-                                  Play
-                                </>
-                              )}
-                            </Button>
-                          ) : null}
+                        {job.type === "one-time" && job.status === "completed" ? (
                           <Button
                             variant="outline"
                             size="sm"
                             className="whitespace-nowrap w-full"
-                            onClick={() => {
-                              setShowNewJobModal(true);
-                              editJob(job._id);
-                            }}
+                            onClick={() => rerunJob(job._id)}
                           >
-                            <i className="ri-edit-line mr-1"></i>
-                            Edit
+                            <i className="ri-replay-5-line mr-1"></i>
+                            Re-Run
                           </Button>
+                        ) : job.type === "recurring" ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 whitespace-nowrap w-full"
-                            onClick={() => deleteAjob(job._id)}
+                            className="whitespace-nowrap w-full"
+                            onClick={() => toggleJobStatus(job._id)}
                           >
-                            <i className="ri-delete-bin-line mr-1"></i>
-                            Delete
+                            {job.status === "active" ? (
+                              <>
+                                <i className="ri-pause-line mr-1"></i>
+                                Pause
+                              </>
+                            ) : (
+                              <>
+                                <i className="ri-play-line mr-1"></i>
+                                Play
+                              </>
+                            )}
                           </Button>
-                        </div>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="whitespace-nowrap w-full"
+                          onClick={() => {
+                            setShowNewJobModal(true);
+                            editJob(job._id);
+                          }}
+                        >
+                          <i className="ri-edit-line mr-1"></i>
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 whitespace-nowrap w-full"
+                          onClick={() => deleteAjob(job._id)}
+                        >
+                          <i className="ri-delete-bin-line mr-1"></i>
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
