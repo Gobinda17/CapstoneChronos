@@ -13,6 +13,7 @@ import Jobs from "../pages/jobs/Job.jsx";
 import Schedule from "../pages/schedule/Schedule.jsx";
 import Logs from "../pages/log/Log.jsx";
 import Notification from "../pages/notifications/Notification.jsx";
+import Profile from "../pages/profile/Profile.jsx";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = UseAuth();
@@ -68,6 +69,10 @@ const routes = createBrowserRouter([
       {
         path: "logs",
         element: <Logs />,
+      },
+      {
+        path: 'profile',
+        element: <Profile/>
       }
     ],
   },

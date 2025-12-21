@@ -78,6 +78,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const resetUserPassword = async (email, password) => {
+    try {
+      const res = await api.post("/auth/password-reset", { email, password });
+      if(res.status === 200) {
+        return { success: true, message: res.data?.message || "Password reset successful." };       
+      }
+      return { success: false, message: res.data?.message || "Password reset failed." };
+    } catch (error) {
+      console.error("Password reset failed:", error);
+      return { success: false, message: error.response.data?.message || "Password reset failed." }; 
+    }
+  }
+
   const value = {
     user,
     isAuthenticated,
@@ -85,6 +98,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     refreshUser,
+    resetUserPassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

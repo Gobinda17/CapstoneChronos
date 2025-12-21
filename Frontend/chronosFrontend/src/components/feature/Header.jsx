@@ -235,7 +235,7 @@ export const Header = ({ user, onLogout, onMobileMenuToggle }) => {
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center space-x-2 lg:space-x-3 p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 rounded-full text-white font-semibold">
                 <span className="text-white text-sm font-medium">
                   {user?.name?.charAt(0) || "U"}
                 </span>
@@ -253,13 +253,12 @@ export const Header = ({ user, onLogout, onMobileMenuToggle }) => {
 
             {showDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors" onClick={() => {
+                    setShowDropdown(false);
+                    navigate("/dashboard/profile");
+                  }}>
                   <i className="ri-user-line mr-2"></i>
                   Profile
-                </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                  <i className="ri-settings-line mr-2"></i>
-                  Settings
                 </button>
                 <hr className="my-2" />
                 <button
