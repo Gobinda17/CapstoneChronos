@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/base/Card";
 import { Badge } from "../../components/base/Badge";
 import { Button } from "../../components/base/Button";
-import { comma } from "postcss/lib/list";
+import api from "../../api";
 
 const Notification = () => {
   const navigate = useNavigate();
@@ -30,10 +30,10 @@ const Notification = () => {
         status === "failed"
           ? "Job Failed"
           : status === "completed"
-          ? "Job Completed"
-          : status === "running"
-          ? "Job Running"
-          : "Job Update";
+            ? "Job Completed"
+            : status === "running"
+              ? "Job Running"
+              : "Job Update";
 
       const message =
         status === "failed"
@@ -41,7 +41,7 @@ const Notification = () => {
           : `${payload.command} is ${status}`;
 
       const notif = {
-        id: crypto.randomUUID?.() || String(Date.now()),
+        id: payload.jobId,
         type: status,
         title: payload.title,
         message,
@@ -50,8 +50,10 @@ const Notification = () => {
         read: false,
       };
 
-      setNotifications((prev) => [notif, ...prev].slice(0, 20));
+      setNotifications((prev) => [notif, ...prev].slice(0, 50));
     });
+
+    fetchNotifications("all");
 
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
@@ -72,6 +74,26 @@ const Notification = () => {
       eventSource.close();
     };
   }, []);
+
+  useEffect(() => {
+    fetchNotifications(filter);
+  }, [filter]);
+
+  const fetchNotifications = async (f = filter) => {
+    const res = await api.get(`/notifications?filter=${f}&page=1&limit=50`);
+    const notificationData = res.data?.data || [];
+    const mapped = notificationData.map((n) => ({
+      id: n._id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      command: n.command,
+      time: new Date(n.createdAt).toLocaleString(),
+      read: n.read,
+    }));
+    console.log("Fetched notifications:", mapped);
+    setNotifications(mapped);
+  };
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -118,26 +140,25 @@ const Notification = () => {
     }
   };
 
-  const handleMarkAsRead = (id) => {
-    setNotifications(
-      notifications.map((notif) =>
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
+  const handleMarkAsRead = async (id) => {
+    await api.patch(`/notifications/${id}/read`);
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((notif) => ({ ...notif, read: true })));
+  const handleMarkAllAsRead = async () => {
+    await api.patch("/notifications/mark-all-read");
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const handleDeleteNotification = (id) => {
-    setNotifications(notifications.filter((notif) => notif.id !== id));
+  const handleDeleteNotification = async (id) => {
+    await api.delete(`/notifications/${id}`);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
-  const handleClearAll = () => {
-    if (window.confirm("Are you sure you want to clear all notifications?")) {
-      setNotifications([]);
-    }
+  const handleClearAll = async () => {
+    if (!window.confirm("Are you sure you want to clear all notifications?")) return;
+    await api.delete("/notifications");
+    setNotifications([]);
   };
 
   const filteredNotifications = notifications.filter((notif) => {
@@ -178,41 +199,37 @@ const Notification = () => {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setFilter("all")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                  filter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${filter === "all"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 All ({notifications.length})
               </button>
               <button
                 onClick={() => setFilter("unread")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                  filter === "unread"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${filter === "unread"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 Unread ({unreadCount})
               </button>
               <button
                 onClick={() => setFilter("error")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                  filter === "error"
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${filter === "error"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 Errors
               </button>
               <button
                 onClick={() => setFilter("warning")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                  filter === "warning"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${filter === "warning"
+                  ? "bg-orange-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 Warnings
               </button>
@@ -255,8 +272,8 @@ const Notification = () => {
               {filter === "unread"
                 ? "You're all caught up! No unread notifications."
                 : filter === "all"
-                ? "You don't have any notifications yet."
-                : `No ${filter} notifications found.`}
+                  ? "You don't have any notifications yet."
+                  : `No ${filter} notifications found.`}
             </p>
           </Card>
         ) : (
@@ -264,11 +281,10 @@ const Notification = () => {
             {filteredNotifications.map((notification) => (
               <Card
                 key={notification.id}
-                className={`p-4 transition-all hover:shadow-md ${
-                  !notification.read
-                    ? "bg-blue-50/50 border-l-4 border-l-blue-600"
-                    : ""
-                }`}
+                className={`p-4 transition-all hover:shadow-md ${!notification.read
+                  ? "bg-blue-50/50 border-l-4 border-l-blue-600"
+                  : ""
+                  }`}
               >
                 <div className="flex items-start gap-4">
                   <div
