@@ -105,9 +105,9 @@ const Profile = () => {
     if (!currentPassword || !newPassword || !confirmPassword)
       return setPasswordError("Please fill in all fields");
 
-    if (newPassword.length < 8)
+    if (newPassword.length < 6)
       return setPasswordError(
-        "New password must be at least 8 characters long"
+        "New password must be at least 6 characters long"
       );
 
     if (newPassword !== confirmPassword)
