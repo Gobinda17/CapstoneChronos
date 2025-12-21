@@ -746,36 +746,136 @@ Cookie: accessToken=<jwt_token>
 
 ---
 
+### Notification Endpoints
+
+Notifications are persisted in MongoDB and also emitted in real time over SSE. All endpoints require authentication.
+
+#### 1. List Notifications
+```http
+GET /notifications?filter=all|unread&page=1&limit=10
+Cookie: accessToken=<jwt_token>
+```
+
+**Query Parameters**:
+- `filter`: `all` (default) or `unread`
+- `page`: page number (default: 1)
+- `limit`: items per page (default: 10)
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "_id": "6583b...",
+      "createdBy": "507f1f77...",
+      "jobId": "507f1f77...",
+      "title": "Database Backup",
+      "message": "Job completed successfully (DB_BACKUP)",
+      "type": "success",
+      "isRead": false,
+      "createdAt": "2025-12-21T10:10:00.000Z",
+      "updatedAt": "2025-12-21T10:10:00.000Z"
+    }
+  ]
+}
+```
+
+#### 2. Mark One Notification As Read
+```http
+PATCH /notifications/:id/read
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)**:
+```json
+{ "status": "success", "message": "Notification marked as read" }
+```
+
+#### 3. Mark All As Read
+```http
+PATCH /notifications/mark-all-read
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)**:
+```json
+{ "status": "success", "message": "All notifications marked as read" }
+```
+
+#### 4. Delete One Notification
+```http
+DELETE /notifications/:id
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)**:
+```json
+{ "status": "success", "message": "Notification deleted successfully" }
+```
+
+#### 5. Clear All Notifications
+```http
+DELETE /notifications
+Cookie: accessToken=<jwt_token>
+```
+
+**Response (200)**:
+```json
+{
+  "status": "success",
+  "message": "All notifications cleared successfully",
+  "deletedCount": 42
+}
+```
+
+---
+
 ### SSE (Server-Sent Events) Endpoint
 
-#### Real-time Job Updates
+#### Real-time Updates
 ```http
 GET /sse/events
 Cookie: accessToken=<jwt_token>
 ```
 
+All events are sent on the prefixed base path: `http://localhost:3001/airtribe/capstone/chronos/app/api/v1/sse/events`.
+
 **Event Stream Format**:
 ```
-event: job-update
-data: {"jobId":"507f1f77bcf86cd799439012","status":"running","message":"Job started"}
+event: connected
+data: {"ok":true,"at":1734740000000}
 
-event: job-complete
-data: {"jobId":"507f1f77bcf86cd799439012","status":"completed","duration":323}
+event: job_update
+data: {"jobId":"507f1f77bcf86cd799439012","title":"Database Backup","command":"DB_BACKUP","type":"running","at":1734740000000}
 
-event: job-failed
-data: {"jobId":"507f1f77bcf86cd799439012","status":"failed","error":"Connection timeout"}
+event: job_update
+data: {"jobId":"507f1f77bcf86cd799439012","title":"Database Backup","command":"DB_BACKUP","type":"completed","at":1734740060000}
+
+event: job_update
+data: {"jobId":"507f1f77bcf86cd799439012","title":"Database Backup","command":"DB_BACKUP","type":"failed","error":"Connection timeout","at":1734740060000}
+
+event: notification
+data: {"_id":"6583b...","jobId":"507f1f77...","title":"Database Backup","message":"Job completed successfully (DB_BACKUP)","type":"success","isRead":false,"createdAt":"2025-12-21T10:10:00.000Z"}
 ```
 
 **Usage in Frontend**:
 ```javascript
 // Cookies are automatically sent with EventSource requests
-const eventSource = new EventSource('http://localhost:3001/sse/events', {
-  withCredentials: true
+const eventSource = new EventSource('http://localhost:3001/airtribe/capstone/chronos/app/api/v1/sse/events', { withCredentials: true });
+
+eventSource.addEventListener('connected', (e) => console.log('SSE connected', e.data));
+
+eventSource.addEventListener('job_update', (e) => {
+  const data = JSON.parse(e.data);
+  // data.type: running | completed | failed
+  console.log('Job update:', data);
 });
 
-eventSource.addEventListener('job-update', (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Job update:', data);
+eventSource.addEventListener('notification', (e) => {
+  const data = JSON.parse(e.data);
+  // Persisted notification payload
+  console.log('Notification:', data);
 });
 ```
 
@@ -906,10 +1006,12 @@ Use [crontab.guru](https://crontab.guru/) to help create cron expressions.
 
 ### 7. Real-time Notifications
 
-- When a job starts, completes, or fails, you'll see a notification
-- Notifications appear in the top-right corner
-- Click the bell icon to view notification history
-- SSE connection status is shown in the header
+- When a job starts, completes, or fails, real-time events are received via SSE (`job_update`) and stored as persisted notifications (`notification`).
+- View and manage notifications at `/notifications`:
+  - Filter: `All` or `Unread` (server-side), type filters (client-side)
+  - Actions: `Mark as read`, `Mark all read`, `Delete one`, `Clear all`
+- Notifications persist in MongoDB and survive reloads/logouts.
+- SSE connection status is visible in the UI; ensure cookies are sent with `withCredentials` if your frontend/backends are on different origins.
 
 ### 8. Monitoring with Bull Board
 
