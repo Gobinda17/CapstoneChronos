@@ -5,6 +5,8 @@ const redisClient = require("../config/redis");
 const jobModel = require("../models/job.model");
 const logModel = require("../models/log.model");
 
+const notificationModel = require("../models/notification.model");
+
 // Job handler functions
 const backupDb = async (command) => {
   console.log("Executing DB_BACKUP with payload:", command);
@@ -136,6 +138,38 @@ const jobWorker = new Worker(
   { connection: redisClient }
 );
 
+const createNotification = async ({
+  userId,
+  jobId,
+  title,
+  message,
+  type, // "info" | "success" | "warning" | "error"
+}) => {
+  // 1) Save in DB
+  const notif = await notificationModel.create({
+    createdBy: userId,
+    jobId,
+    title,
+    message,
+    type,
+    isRead: false,
+  });
+
+  // 2) Send real-time update
+  broadcast("notification", {
+    _id: notif._id,
+    jobId,
+    title,
+    message,
+    type,
+    isRead: false,
+    createdAt: notif.createdAt,
+  });
+
+  return notif;
+};
+
+
 jobWorker.on("active", async (job) => {
   try {
     const jobDoc = await jobModel.findById(job.data.jobId);
@@ -145,6 +179,14 @@ jobWorker.on("active", async (job) => {
     jobDoc.status = "running";
     jobDoc.lastRunAt = new Date();
     await jobDoc.save();
+
+    await createNotification({
+      userId: jobDoc.createdBy,
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      message: `Job started (${jobDoc.command})`,
+      type: "info",
+    });
 
     broadcast("job_update", {
       jobId: jobDoc._id,
@@ -175,14 +217,12 @@ jobWorker.on("completed", async (job) => {
 
     await jobDoc.save();
 
-    // also write a success log (recommended)
-    await logModel.create({
-      jobId: job.data.jobId,
-      jobname: job.data.name,
-      command: job.data.command,
-      status: "completed",
-      runAt: new Date(),
-      durationMs: 0,
+    await createNotification({
+      userId: jobDoc.createdBy,
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      message: `Job completed successfully (${jobDoc.command})`,
+      type: "success",
     });
 
     broadcast("job_update", {
@@ -211,6 +251,14 @@ jobWorker.on("failed", async (job, err) => {
       runAt: new Date(),
       durationMs: 0, // or compute if you track start elsewhere
       error: err.message,
+    });
+
+    await createNotification({
+      userId: jobDoc.createdBy,
+      jobId: jobDoc._id,
+      title: jobDoc.name,
+      message: `Job failed (${jobDoc.command}): ${err.message}`,
+      type: "error",
     });
 
     broadcast("job_update", {
